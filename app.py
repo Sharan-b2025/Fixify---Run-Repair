@@ -44,19 +44,22 @@ def is_rate_limited(ip: str) -> bool:
     return False
 
 
-SYSTEM_PROMPT = """You are Fixify, an expert multi-language code debugger and compiler simulator.
+SYSTEM_PROMPT = """You are Fixify, a friendly expert multi-language code debugger and compiler simulator.
+Explain things simply enough that a 15-year-old beginner can understand and fix their own code.
 You will be given source code (language may or may not be specified) and must:
 
 1. Detect the programming language if not given.
-2. Carefully read the ENTIRE code as a real compiler/interpreter would.
+2. Carefully read the ENTIRE code as a real compiler/interpreter would, top to bottom.
 3. If the code is 100% correct and would run without errors, simulate and return
    its exact expected console output.
-4. If the code has ANY error (syntax, logical, runtime, type, indentation,
-   missing import, etc.), find the FIRST major error, and report:
+4. If the code has ANY errors, find EVERY error in the code (not just the first
+   one) — syntax, logical, runtime, type, indentation, missing import, typos,
+   missing semicolons/braces, undefined variables, etc. For EACH error report:
    - the exact line number it occurs on
-   - a short, clear explanation of what the error is
-   - a short 10-15 word message explaining WHY this should be fixed
-   - a corrected version of the FULL code with the fix applied
+   - a short, simple title for the error a beginner would understand
+   - a plain-English explanation of what is wrong on that line
+   - a short 10-15 word message explaining WHY fixing it matters
+   List errors in the order they appear, top to bottom.
 
 Respond ONLY with strict, valid JSON (no markdown fences, no extra text) in
 EXACTLY this schema:
@@ -65,11 +68,15 @@ EXACTLY this schema:
   "language": "detected language name",
   "status": "success" or "error",
   "output": "expected program output if status is success, else empty string",
-  "error_line": integer line number if status is error else null,
-  "error_title": "short name of the error, e.g. 'SyntaxError: missing colon'",
-  "error_message": "clear explanation of what is wrong and where",
-  "fix_reason": "10-15 word sentence on why fixing this matters",
-  "fixed_code": "full corrected code if status is error, else empty string",
+  "errors": [
+    {
+      "line": integer line number,
+      "title": "short simple error name",
+      "message": "plain-English explanation of what is wrong on this line",
+      "fix_reason": "10-15 word sentence on why fixing this matters"
+    }
+  ],
+  "fixed_code": "full corrected code with ALL errors fixed, else empty string if status is success",
   "suggestions": [
     {"tip": "short 4-8 word tip title", "why": "one brief sentence (10-18 words) on what it does and why it's useful"},
     {"tip": "short 4-8 word tip title", "why": "one brief sentence (10-18 words) on what it does and why it's useful"}
@@ -77,9 +84,10 @@ EXACTLY this schema:
 }
 
 Be precise about line numbers (1-indexed, matching the given code exactly).
-Keep error_message under 40 words. Give 2-4 suggestions, each genuinely useful
-for this specific code (style, performance, edge cases, readability, etc.),
-never generic filler.
+"errors" must be an empty array when status is "success". Keep each error's
+message under 35 words, written simply, no jargon a beginner wouldn't know.
+Give 2-4 suggestions, each genuinely useful for this specific code (style,
+performance, edge cases, readability, etc.), never generic filler.
 """
 
 
@@ -97,10 +105,12 @@ def extract_json(text: str) -> dict:
 def error_response(title: str, message: str, fix_reason: str, language: str = "auto"):
     return {
         "status": "error",
-        "error_title": title,
-        "error_message": message,
-        "error_line": None,
-        "fix_reason": fix_reason,
+        "errors": [{
+            "line": None,
+            "title": title,
+            "message": message,
+            "fix_reason": fix_reason,
+        }],
         "fixed_code": "",
         "output": "",
         "language": language,
@@ -174,8 +184,9 @@ def analyze():
         )
         result = extract_json(response.text)
         result.setdefault("suggestions", [])
+        result.setdefault("errors", [])
         result.setdefault("language", language_hint)
-        logger.info("Analyzed %d chars for %s -> status=%s", len(code), client_ip, result.get("status"))
+        logger.info("Analyzed %d chars for %s -> status=%s errors=%d", len(code), client_ip, result.get("status"), len(result.get("errors", [])))
         return jsonify(result), 200
 
     except json.JSONDecodeError:
