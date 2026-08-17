@@ -11,11 +11,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# ---------------------------------------------------------------------------
-# Config
-# ---------------------------------------------------------------------------
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-MODEL_NAME = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+MODEL_NAME = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
 MAX_CODE_CHARS = int(os.environ.get("MAX_CODE_CHARS", "20000"))
 RATE_LIMIT_PER_MINUTE = int(os.environ.get("RATE_LIMIT_PER_MINUTE", "20"))
 
@@ -28,14 +25,10 @@ logger = logging.getLogger("fixify")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 else:
-    logger.warning("GEMINI_API_KEY is not set — /analyze will return a config error.")
+    logger.warning("GEMINI_API_KEY is not set")
 
 app = Flask(__name__)
 
-# ---------------------------------------------------------------------------
-# Very small in-memory rate limiter (per client IP). Good enough for a
-# single Render instance / free tier; swap for Redis if you scale out.
-# ---------------------------------------------------------------------------
 _request_log = defaultdict(deque)
 
 
@@ -51,9 +44,6 @@ def is_rate_limited(ip: str) -> bool:
     return False
 
 
-# ---------------------------------------------------------------------------
-# Gemini prompt
-# ---------------------------------------------------------------------------
 SYSTEM_PROMPT = """You are Fixify, an expert multi-language code debugger and compiler simulator.
 You will be given source code (language may or may not be specified) and must:
 
@@ -80,16 +70,20 @@ EXACTLY this schema:
   "error_message": "clear explanation of what is wrong and where",
   "fix_reason": "10-15 word sentence on why fixing this matters",
   "fixed_code": "full corrected code if status is error, else empty string",
-  "suggestions": ["short optional improvement tip 1", "short optional improvement tip 2"]
+  "suggestions": [
+    {"tip": "short 4-8 word tip title", "why": "one brief sentence (10-18 words) on what it does and why it's useful"},
+    {"tip": "short 4-8 word tip title", "why": "one brief sentence (10-18 words) on what it does and why it's useful"}
+  ]
 }
 
 Be precise about line numbers (1-indexed, matching the given code exactly).
-Keep error_message under 40 words.
+Keep error_message under 40 words. Give 2-4 suggestions, each genuinely useful
+for this specific code (style, performance, edge cases, readability, etc.),
+never generic filler.
 """
 
 
 def extract_json(text: str) -> dict:
-    """Gemini sometimes wraps JSON in markdown fences — strip those safely."""
     cleaned = text.strip()
     cleaned = re.sub(r"^```json", "", cleaned, flags=re.IGNORECASE).strip()
     cleaned = re.sub(r"^```", "", cleaned).strip()
@@ -114,9 +108,6 @@ def error_response(title: str, message: str, fix_reason: str, language: str = "a
     }
 
 
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -196,7 +187,7 @@ def analyze():
             language_hint,
         )), 200
 
-    except Exception as exc:  # noqa: BLE001 - surface any API/network error to the UI
+    except Exception as exc:
         logger.exception("Gemini request failed")
         return jsonify(error_response(
             "Analysis Failed",
