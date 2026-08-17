@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fixify — Run &amp; Repair</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%237c5cff%22/><text x=%2250%22 y=%2268%22 font-size=%2260%22 font-family=%22sans-serif%22 fill=%22%2305060a%22 text-anchor=%22middle%22>F</text></svg>">
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
@@ -34,7 +35,6 @@ body{
   position:relative;
 }
 
-/* ---------- animated background ---------- */
 #bg-canvas{position:fixed; inset:0; z-index:0; opacity:.5;}
 .glow-orb{
   position:fixed; border-radius:50%; filter:blur(90px); z-index:0; pointer-events:none;
@@ -47,7 +47,6 @@ body{
   50%{transform:translateY(30px) translateX(20px);}
 }
 
-/* ---------- header ---------- */
 header{
   position:relative; z-index:2;
   display:flex; align-items:center; justify-content:space-between;
@@ -80,7 +79,6 @@ select:hover, .icon-btn:hover{border-color:var(--accent); box-shadow:0 0 10px rg
 .icon-btn{display:flex; align-items:center; gap:6px;}
 #voiceToggle.active{color:var(--accent2); border-color:var(--accent2);}
 
-/* ---------- layout ---------- */
 .split{
   position:relative; z-index:1;
   display:flex; height:calc(100vh - 63px);
@@ -113,12 +111,35 @@ select:hover, .icon-btn:hover{border-color:var(--accent); box-shadow:0 0 10px rg
 }
 .mini-btn:hover{color:var(--text); border-color:var(--accent2); box-shadow:0 0 8px rgba(0,230,195,.3);}
 
-/* code editor */
 .CodeMirror{
   flex:1; height:100% !important; font-family:'JetBrains Mono', monospace !important;
   font-size:14.5px; line-height:1.55; background:var(--panel) !important;
 }
 .editor-wrap{flex:1; overflow:hidden; position:relative;}
+
+.cm-error-line{
+  background:rgba(255,77,109,.14) !important;
+  animation:errorLineIn .4s ease;
+}
+.cm-error-line .CodeMirror-linenumber{
+  color:var(--danger) !important;
+  font-weight:800;
+}
+.cm-error-gutter{
+  color:var(--danger) !important;
+  font-weight:800;
+}
+@keyframes errorLineIn{
+  0%{background:rgba(255,77,109,.4) !important;}
+  100%{background:rgba(255,77,109,.14) !important;}
+}
+.cm-error-token{
+  text-decoration:underline wavy var(--danger);
+  text-decoration-thickness:2px;
+  text-underline-offset:3px;
+  background:rgba(255,77,109,.18);
+  border-radius:3px;
+}
 
 .left-footer{
   display:flex; align-items:center; justify-content:space-between; gap:10px;
@@ -148,7 +169,6 @@ select:hover, .icon-btn:hover{border-color:var(--accent); box-shadow:0 0 10px rg
 .stat-chip{font-size:11.5px; color:var(--muted); display:flex; gap:14px;}
 .stat-chip span b{color:var(--text);}
 
-/* ---------- right panel / output ---------- */
 .output-area{
   flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:16px;
 }
@@ -211,12 +231,24 @@ pre.code-block::-webkit-scrollbar{height:6px; width:6px;}
 pre.code-block::-webkit-scrollbar-thumb{background:var(--border); border-radius:3px;}
 
 .section-label{font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); margin:14px 0 8px; font-weight:700;}
+.section-label .hint{color:var(--muted); font-weight:400; text-transform:none; font-size:11px; letter-spacing:0;}
 .suggestion-list{list-style:none; display:flex; flex-direction:column; gap:8px;}
-.suggestion-list li{
-  display:flex; gap:8px; font-size:13px; color:var(--text); background:rgba(255,255,255,.03);
+.tip-item{
+  font-size:13px; color:var(--text); background:rgba(255,255,255,.03);
   padding:9px 12px; border-radius:8px; border:1px solid var(--border);
+  cursor:pointer; transition:.2s;
 }
-.suggestion-list li::before{content:"💡"; flex-shrink:0;}
+.tip-item:hover{border-color:var(--accent); background:rgba(124,92,255,.06);}
+.tip-row{display:flex; align-items:center; gap:8px;}
+.tip-row::before{content:"💡"; flex-shrink:0;}
+.tip-arrow{margin-left:auto; color:var(--muted); transition:transform .2s ease; font-size:11px; flex-shrink:0;}
+.tip-item.open .tip-arrow{transform:rotate(90deg); color:var(--accent2);}
+.tip-detail{
+  max-height:0; opacity:0; overflow:hidden; transition:max-height .25s ease, opacity .2s ease, margin .25s ease;
+  font-size:12px; color:var(--muted); line-height:1.5; padding-left:24px; border-left:2px solid var(--accent);
+  margin-top:0;
+}
+.tip-item.open .tip-detail{max-height:200px; opacity:1; margin-top:8px;}
 
 .apply-fix-btn{
   margin-top:12px; background:linear-gradient(135deg, var(--accent2), #00b39c); color:#04211c;
@@ -233,7 +265,6 @@ pre.code-block::-webkit-scrollbar-thumb{background:var(--border); border-radius:
 }
 .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
 
-/* fullscreen icon toggle state */
 .fs-hide{display:none !important;}
 
 @media (max-width:820px){
@@ -330,7 +361,6 @@ pre.code-block::-webkit-scrollbar-thumb{background:var(--border); border-radius:
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/go/go.min.js"></script>
 
 <script>
-/* ---------------- background particle canvas ---------------- */
 const canvas = document.getElementById('bg-canvas');
 const ctx = canvas.getContext('2d');
 function resize(){canvas.width = innerWidth; canvas.height = innerHeight;}
@@ -352,7 +382,6 @@ function loop(){
 }
 loop();
 
-/* ---------------- code editor ---------------- */
 const modeMap = {
   auto:'python', python:'python', javascript:'javascript', c:'text/x-csrc',
   cpp:'text/x-c++src', java:'text/x-java', go:'go', html:'htmlmixed', sql:'sql'
@@ -369,7 +398,7 @@ greet("Fixify")`;
 editor.setValue(SAMPLE);
 updateStats();
 
-editor.on('change', updateStats);
+editor.on('change', ()=>{ updateStats(); clearErrorHighlight(); });
 function updateStats(){
   const val = editor.getValue();
   document.getElementById('lineCount').textContent = editor.lineCount();
@@ -379,10 +408,68 @@ function updateStats(){
 document.getElementById('langSelect').addEventListener('change', e=>{
   editor.setOption('mode', modeMap[e.target.value] || 'python');
 });
-document.getElementById('clearBtn').addEventListener('click', ()=>{editor.setValue(''); editor.focus();});
-document.getElementById('sampleBtn').addEventListener('click', ()=>{editor.setValue(SAMPLE); showToast('Sample loaded');});
+document.getElementById('clearBtn').addEventListener('click', ()=>{editor.setValue(''); clearErrorHighlight(); editor.focus();});
+document.getElementById('sampleBtn').addEventListener('click', ()=>{editor.setValue(SAMPLE); clearErrorHighlight(); showToast('Sample loaded');});
 
-/* ---------------- fullscreen ---------------- */
+let errorLineHandle = null;
+let errorMarks = [];
+
+function clearErrorHighlight(){
+  if(errorLineHandle !== null){
+    editor.removeLineClass(errorLineHandle, 'background', 'cm-error-line');
+    editor.removeLineClass(errorLineHandle, 'gutter', 'cm-error-gutter');
+    errorLineHandle = null;
+  }
+  errorMarks.forEach(m => m.clear());
+  errorMarks = [];
+}
+
+function highlightErrorLine(lineNumber1Indexed, errorTitle, errorMessage){
+  clearErrorHighlight();
+  if(!lineNumber1Indexed || lineNumber1Indexed < 1) return;
+  const lineIdx = lineNumber1Indexed - 1;
+  if(lineIdx >= editor.lineCount()) return;
+
+  errorLineHandle = lineIdx;
+  editor.addLineClass(lineIdx, 'background', 'cm-error-line');
+  editor.addLineClass(lineIdx, 'gutter', 'cm-error-gutter');
+  editor.scrollIntoView({line: lineIdx, ch: 0}, 120);
+
+  const lineText = editor.getLine(lineIdx);
+  if(!lineText) return;
+
+  const combined = `${errorTitle || ''} ${errorMessage || ''}`;
+  const quoted = [...combined.matchAll(/['"`]([^'"`]{1,40})['"`]/g)].map(m => m[1]).filter(Boolean);
+
+  const seen = new Set();
+  for(const token of quoted){
+    if(seen.has(token)) continue;
+    seen.add(token);
+    const idx = lineText.indexOf(token);
+    if(idx !== -1){
+      const mark = editor.markText(
+        {line: lineIdx, ch: idx},
+        {line: lineIdx, ch: idx + token.length},
+        {className: 'cm-error-token'}
+      );
+      errorMarks.push(mark);
+    }
+  }
+
+  if(errorMarks.length === 0){
+    const start = lineText.length - lineText.trimStart().length;
+    const end = lineText.trimEnd().length;
+    if(end > start){
+      const mark = editor.markText(
+        {line: lineIdx, ch: start},
+        {line: lineIdx, ch: end},
+        {className: 'cm-error-token'}
+      );
+      errorMarks.push(mark);
+    }
+  }
+}
+
 function toggleFullscreenPane(paneEl){
   const el = paneEl;
   if(!document.fullscreenElement){
@@ -395,7 +482,6 @@ document.getElementById('fsLeftBtn').addEventListener('click', ()=>toggleFullscr
 document.getElementById('fsRightBtn').addEventListener('click', ()=>toggleFullscreenPane(document.getElementById('rightPane')));
 document.addEventListener('fullscreenchange', ()=>{ setTimeout(()=>editor.refresh(), 150); });
 
-/* ---------------- toast ---------------- */
 let toastTimer;
 function showToast(msg){
   const t = document.getElementById('toast');
@@ -404,7 +490,6 @@ function showToast(msg){
   toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
 }
 
-/* ---------------- voice ---------------- */
 let voiceOn = true;
 const voiceToggle = document.getElementById('voiceToggle');
 voiceToggle.addEventListener('click', ()=>{
@@ -427,7 +512,6 @@ function speak(text, micEl){
   speechSynthesis.speak(utter);
 }
 
-/* ---------------- analyze ---------------- */
 const analyzeBtn = document.getElementById('analyzeBtn');
 const outputArea = document.getElementById('outputArea');
 const runLabel = document.getElementById('runLabel');
@@ -440,6 +524,7 @@ document.addEventListener('keydown', e=>{
 async function runAnalysis(){
   const code = editor.getValue();
   const language = document.getElementById('langSelect').value;
+  clearErrorHighlight();
   analyzeBtn.classList.add('loading');
   runLabel.textContent = 'Analyzing...';
 
@@ -479,9 +564,11 @@ function renderResult(data){
   if(!isSuccess){
     if(data.error_line){
       html += `<div class="line-tag">📍 Line ${data.error_line}</div>`;
+      highlightErrorLine(data.error_line, data.error_title, data.error_message);
     }
     html += `<div class="err-msg">${escapeHtml(data.error_message || '')}</div>`;
   } else {
+    clearErrorHighlight();
     html += `<div class="section-label">Program Output</div>
       <pre class="code-block">${escapeHtml(data.output || '(no output)')}</pre>`;
   }
@@ -497,8 +584,15 @@ function renderResult(data){
   }
 
   if(data.suggestions && data.suggestions.length){
-    html += `<div class="section-label">Extra Tips</div>
-      <ul class="suggestion-list">${data.suggestions.map(s=>`<li>${escapeHtml(s)}</li>`).join('')}</ul>`;
+    html += `<div class="section-label">Extra Tips <span class="hint">(tap to expand)</span></div>
+      <ul class="suggestion-list">${data.suggestions.map((s, i)=>{
+        const tip = typeof s === 'string' ? s : (s.tip || '');
+        const why = typeof s === 'string' ? '' : (s.why || '');
+        return `<li class="tip-item" data-idx="${i}">
+            <div class="tip-row"><span>${escapeHtml(tip)}</span><span class="tip-arrow">▸</span></div>
+            ${why ? `<div class="tip-detail">${escapeHtml(why)}</div>` : ''}
+          </li>`;
+      }).join('')}</ul>`;
   }
 
   card.innerHTML = html;
@@ -508,9 +602,18 @@ function renderResult(data){
   if(applyBtn){
     applyBtn.addEventListener('click', ()=>{
       editor.setValue(data.fixed_code);
+      clearErrorHighlight();
       showToast('Fix applied to editor ✔');
     });
   }
+
+  card.querySelectorAll('.tip-item').forEach(li=>{
+    if(li.querySelector('.tip-detail')){
+      li.addEventListener('click', ()=> li.classList.toggle('open'));
+    } else {
+      li.style.cursor = 'default';
+    }
+  });
 
   if(data.fix_reason){
     speak(data.fix_reason, document.getElementById('micIcon'));
