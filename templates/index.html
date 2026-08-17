@@ -207,7 +207,10 @@ select:hover, .icon-btn:hover{border-color:var(--accent); box-shadow:0 0 10px rg
   display:inline-flex; align-items:center; gap:6px; background:rgba(255,77,109,.12);
   color:var(--danger); border:1px solid rgba(255,77,109,.35); padding:4px 10px;
   border-radius:8px; font-family:'JetBrains Mono',monospace; font-size:12.5px; margin-bottom:10px;
+  transition:.2s;
 }
+button.line-tag{cursor:pointer;}
+button.line-tag:hover{background:rgba(255,77,109,.25); box-shadow:0 0 10px rgba(255,77,109,.35); transform:translateY(-1px);}
 .err-msg{font-size:13.5px; color:var(--text); line-height:1.6; margin-bottom:12px;}
 
 .fix-reason{
@@ -411,30 +414,20 @@ document.getElementById('langSelect').addEventListener('change', e=>{
 document.getElementById('clearBtn').addEventListener('click', ()=>{editor.setValue(''); clearErrorHighlight(); editor.focus();});
 document.getElementById('sampleBtn').addEventListener('click', ()=>{editor.setValue(SAMPLE); clearErrorHighlight(); showToast('Sample loaded');});
 
-let errorLineHandle = null;
+let errorLineHandles = [];
 let errorMarks = [];
 
 function clearErrorHighlight(){
-  if(errorLineHandle !== null){
-    editor.removeLineClass(errorLineHandle, 'background', 'cm-error-line');
-    editor.removeLineClass(errorLineHandle, 'gutter', 'cm-error-gutter');
-    errorLineHandle = null;
-  }
+  errorLineHandles.forEach(lineIdx => {
+    editor.removeLineClass(lineIdx, 'background', 'cm-error-line');
+    editor.removeLineClass(lineIdx, 'gutter', 'cm-error-gutter');
+  });
+  errorLineHandles = [];
   errorMarks.forEach(m => m.clear());
   errorMarks = [];
 }
 
-function highlightErrorLine(lineNumber1Indexed, errorTitle, errorMessage){
-  clearErrorHighlight();
-  if(!lineNumber1Indexed || lineNumber1Indexed < 1) return;
-  const lineIdx = lineNumber1Indexed - 1;
-  if(lineIdx >= editor.lineCount()) return;
-
-  errorLineHandle = lineIdx;
-  editor.addLineClass(lineIdx, 'background', 'cm-error-line');
-  editor.addLineClass(lineIdx, 'gutter', 'cm-error-gutter');
-  editor.scrollIntoView({line: lineIdx, ch: 0}, 120);
-
+function markErrorToken(lineIdx, errorTitle, errorMessage){
   const lineText = editor.getLine(lineIdx);
   if(!lineText) return;
 
@@ -442,6 +435,7 @@ function highlightErrorLine(lineNumber1Indexed, errorTitle, errorMessage){
   const quoted = [...combined.matchAll(/['"`]([^'"`]{1,40})['"`]/g)].map(m => m[1]).filter(Boolean);
 
   const seen = new Set();
+  let matched = false;
   for(const token of quoted){
     if(seen.has(token)) continue;
     seen.add(token);
@@ -453,10 +447,11 @@ function highlightErrorLine(lineNumber1Indexed, errorTitle, errorMessage){
         {className: 'cm-error-token'}
       );
       errorMarks.push(mark);
+      matched = true;
     }
   }
 
-  if(errorMarks.length === 0){
+  if(!matched){
     const start = lineText.length - lineText.trimStart().length;
     const end = lineText.trimEnd().length;
     if(end > start){
@@ -468,6 +463,35 @@ function highlightErrorLine(lineNumber1Indexed, errorTitle, errorMessage){
       errorMarks.push(mark);
     }
   }
+}
+
+function highlightErrorLines(errors){
+  clearErrorHighlight();
+  if(!errors || !errors.length) return;
+
+  errors.forEach(err => {
+    if(!err.line || err.line < 1) return;
+    const lineIdx = err.line - 1;
+    if(lineIdx >= editor.lineCount()) return;
+
+    errorLineHandles.push(lineIdx);
+    editor.addLineClass(lineIdx, 'background', 'cm-error-line');
+    editor.addLineClass(lineIdx, 'gutter', 'cm-error-gutter');
+    markErrorToken(lineIdx, err.title, err.message);
+  });
+
+  if(errors[0] && errors[0].line){
+    editor.scrollIntoView({line: errors[0].line - 1, ch: 0}, 120);
+  }
+}
+
+function jumpToLine(lineNumber1Indexed){
+  if(!lineNumber1Indexed || lineNumber1Indexed < 1) return;
+  const lineIdx = lineNumber1Indexed - 1;
+  if(lineIdx >= editor.lineCount()) return;
+  editor.focus();
+  editor.setCursor({line: lineIdx, ch: editor.getLine(lineIdx).length});
+  editor.scrollIntoView({line: lineIdx, ch: 0}, 120);
 }
 
 function toggleFullscreenPane(paneEl){
@@ -537,9 +561,10 @@ async function runAnalysis(){
     renderResult(data);
   }catch(err){
     renderResult({
-      status:'error', error_title:'Network Error',
-      error_message:'Could not reach the Fixify server. Check your connection.',
-      error_line:null, fix_reason:'A working connection is needed to analyze your code.',
+      status:'error',
+      errors:[{ line:null, title:'Network Error',
+        message:'Could not reach the Fixify server. Check your connection.',
+        fix_reason:'A working connection is needed to analyze your code.' }],
       fixed_code:'', output:'', suggestions:[]
     });
   }finally{
@@ -552,74 +577,117 @@ function renderResult(data){
   document.getElementById('placeholder')?.remove();
   outputArea.innerHTML = '';
 
-  const card = document.createElement('div');
   const isSuccess = data.status === 'success';
-  card.className = 'card ' + (isSuccess ? 'success' : 'error');
+  const errors = data.errors || [];
 
-  let html = `<div class="card-title">
-      ${isSuccess ? '✅' : '⚠️'} ${isSuccess ? 'Code Runs Perfectly' : (data.error_title || 'Issue Found')}
-      <span class="status-badge ${isSuccess ? 'success':'error'}">${isSuccess?'Success':'Error'}</span>
-    </div>`;
-
-  if(!isSuccess){
-    if(data.error_line){
-      html += `<div class="line-tag">📍 Line ${data.error_line}</div>`;
-      highlightErrorLine(data.error_line, data.error_title, data.error_message);
-    }
-    html += `<div class="err-msg">${escapeHtml(data.error_message || '')}</div>`;
-  } else {
+  if(isSuccess){
     clearErrorHighlight();
-    html += `<div class="section-label">Program Output</div>
+
+    const card = document.createElement('div');
+    card.className = 'card success';
+    let html = `<div class="card-title">✅ Code Runs Perfectly
+        <span class="status-badge success">Success</span>
+      </div>
+      <div class="section-label">Program Output</div>
       <pre class="code-block">${escapeHtml(data.output || '(no output)')}</pre>`;
+
+    if(data.fix_reason){
+      html += `<div class="fix-reason"><div class="mic" id="micIcon">🎙️</div><div>${escapeHtml(data.fix_reason)}</div></div>`;
+    }
+
+    html += buildSuggestionsHtml(data.suggestions);
+    card.innerHTML = html;
+    outputArea.appendChild(card);
+    wireSuggestionToggles(card);
+
+    speak('Your code ran successfully with no errors.');
+    return;
   }
 
-  if(data.fix_reason){
-    html += `<div class="fix-reason"><div class="mic" id="micIcon">🎙️</div><div>${escapeHtml(data.fix_reason)}</div></div>`;
-  }
+  highlightErrorLines(errors);
 
-  if(!isSuccess && data.fixed_code){
-    html += `<div class="section-label">Suggested Fix</div>
+  const summaryCard = document.createElement('div');
+  summaryCard.className = 'card error';
+  summaryCard.innerHTML = `<div class="card-title">⚠️ ${errors.length} ${errors.length === 1 ? 'Issue' : 'Issues'} Found
+      <span class="status-badge error">Error</span>
+    </div>
+    <div class="err-msg">Fix these one at a time, starting from the top. Click a line number to jump straight to it in your code.</div>`;
+  outputArea.appendChild(summaryCard);
+
+  errors.forEach((err, i) => {
+    const card = document.createElement('div');
+    card.className = 'card error';
+    card.style.animationDelay = (i * 0.08) + 's';
+
+    let html = `<div class="card-title">🔴 ${escapeHtml(err.title || 'Error ' + (i+1))}</div>`;
+    if(err.line){
+      html += `<button class="line-tag" data-line="${err.line}" style="cursor:pointer; border:1px solid rgba(255,77,109,.35); background:rgba(255,77,109,.12);">📍 Line ${err.line} — click to jump</button>`;
+    }
+    html += `<div class="err-msg">${escapeHtml(err.message || '')}</div>`;
+    if(err.fix_reason){
+      html += `<div class="fix-reason"><div class="mic" data-mic="${i}">🎙️</div><div>${escapeHtml(err.fix_reason)}</div></div>`;
+    }
+
+    card.innerHTML = html;
+    outputArea.appendChild(card);
+  });
+
+  if(data.fixed_code){
+    const fixCard = document.createElement('div');
+    fixCard.className = 'card success';
+    fixCard.innerHTML = `<div class="section-label">Suggested Fix (all errors corrected)</div>
       <pre class="code-block">${escapeHtml(data.fixed_code)}</pre>
       <button class="apply-fix-btn" id="applyFixBtn">⤵ Apply Fix to Editor</button>`;
-  }
+    outputArea.appendChild(fixCard);
 
-  if(data.suggestions && data.suggestions.length){
-    html += `<div class="section-label">Extra Tips <span class="hint">(tap to expand)</span></div>
-      <ul class="suggestion-list">${data.suggestions.map((s, i)=>{
-        const tip = typeof s === 'string' ? s : (s.tip || '');
-        const why = typeof s === 'string' ? '' : (s.why || '');
-        return `<li class="tip-item" data-idx="${i}">
-            <div class="tip-row"><span>${escapeHtml(tip)}</span><span class="tip-arrow">▸</span></div>
-            ${why ? `<div class="tip-detail">${escapeHtml(why)}</div>` : ''}
-          </li>`;
-      }).join('')}</ul>`;
-  }
-
-  card.innerHTML = html;
-  outputArea.appendChild(card);
-
-  const applyBtn = document.getElementById('applyFixBtn');
-  if(applyBtn){
-    applyBtn.addEventListener('click', ()=>{
+    document.getElementById('applyFixBtn').addEventListener('click', ()=>{
       editor.setValue(data.fixed_code);
       clearErrorHighlight();
       showToast('Fix applied to editor ✔');
     });
   }
 
-  card.querySelectorAll('.tip-item').forEach(li=>{
+  if(data.suggestions && data.suggestions.length){
+    const tipsCard = document.createElement('div');
+    tipsCard.className = 'card';
+    tipsCard.innerHTML = buildSuggestionsHtml(data.suggestions);
+    outputArea.appendChild(tipsCard);
+    wireSuggestionToggles(tipsCard);
+  }
+
+  outputArea.querySelectorAll('.line-tag[data-line]').forEach(btn=>{
+    btn.addEventListener('click', ()=> jumpToLine(parseInt(btn.dataset.line, 10)));
+  });
+
+  if(errors.length){
+    const spoken = errors.length === 1
+      ? errors[0].fix_reason || `There is one error on line ${errors[0].line}.`
+      : `I found ${errors.length} errors in your code. Check each highlighted line, starting from the top.`;
+    speak(spoken);
+  }
+}
+
+function buildSuggestionsHtml(suggestions){
+  if(!suggestions || !suggestions.length) return '';
+  return `<div class="section-label">Extra Tips <span class="hint">(tap to expand)</span></div>
+    <ul class="suggestion-list">${suggestions.map((s, i)=>{
+      const tip = typeof s === 'string' ? s : (s.tip || '');
+      const why = typeof s === 'string' ? '' : (s.why || '');
+      return `<li class="tip-item" data-idx="${i}">
+          <div class="tip-row"><span>${escapeHtml(tip)}</span><span class="tip-arrow">▸</span></div>
+          ${why ? `<div class="tip-detail">${escapeHtml(why)}</div>` : ''}
+        </li>`;
+    }).join('')}</ul>`;
+}
+
+function wireSuggestionToggles(scopeEl){
+  scopeEl.querySelectorAll('.tip-item').forEach(li=>{
     if(li.querySelector('.tip-detail')){
       li.addEventListener('click', ()=> li.classList.toggle('open'));
     } else {
       li.style.cursor = 'default';
     }
   });
-
-  if(data.fix_reason){
-    speak(data.fix_reason, document.getElementById('micIcon'));
-  } else if(isSuccess){
-    speak('Your code ran successfully with no errors.');
-  }
 }
 
 function escapeHtml(str){
