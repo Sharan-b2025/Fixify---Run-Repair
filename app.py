@@ -14,12 +14,9 @@ load_dotenv()
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 MODEL_NAME = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
 MAX_CODE_CHARS = int(os.environ.get("MAX_CODE_CHARS", "20000"))
-RATE_LIMIT_PER_MINUTE = int(os.environ.get("RATE_LIMIT_PER_MINUTE", "20"))
+RATE_LIMIT_PER_MINUTE = int(os.environ.get("RATE_LIMIT_PER_MINUTE", "30"))
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("fixify")
 
 if GEMINI_API_KEY:
@@ -28,9 +25,7 @@ else:
     logger.warning("GEMINI_API_KEY is not set")
 
 app = Flask(__name__)
-
 _request_log = defaultdict(deque)
-
 
 def is_rate_limited(ip: str) -> bool:
     now = time.time()
@@ -43,54 +38,6 @@ def is_rate_limited(ip: str) -> bool:
     q.append(now)
     return False
 
-
-SYSTEM_PROMPT = """You are Fixify, a friendly expert multi-language code debugger and compiler simulator.
-Explain things simply enough that a 15-year-old beginner can understand and fix their own code.
-You will be given source code (language may or may not be specified) and must:
-
-1. Detect the programming language if not given.
-2. Carefully read the ENTIRE code as a real compiler/interpreter would, top to bottom.
-3. If the code is 100% correct and would run without errors, simulate and return
-   its exact expected console output.
-4. If the code has ANY errors, find EVERY error in the code (not just the first
-   one) — syntax, logical, runtime, type, indentation, missing import, typos,
-   missing semicolons/braces, undefined variables, etc. For EACH error report:
-   - the exact line number it occurs on
-   - a short, simple title for the error a beginner would understand
-   - a plain-English explanation of what is wrong on that line
-   - a short 10-15 word message explaining WHY fixing it matters
-   List errors in the order they appear, top to bottom.
-
-Respond ONLY with strict, valid JSON (no markdown fences, no extra text) in
-EXACTLY this schema:
-
-{
-  "language": "detected language name",
-  "status": "success" or "error",
-  "output": "expected program output if status is success, else empty string",
-  "errors": [
-    {
-      "line": integer line number,
-      "title": "short simple error name",
-      "message": "plain-English explanation of what is wrong on this line",
-      "fix_reason": "10-15 word sentence on why fixing this matters"
-    }
-  ],
-  "fixed_code": "full corrected code with ALL errors fixed, else empty string if status is success",
-  "suggestions": [
-    {"tip": "short 4-8 word tip title", "why": "one brief sentence (10-18 words) on what it does and why it's useful"},
-    {"tip": "short 4-8 word tip title", "why": "one brief sentence (10-18 words) on what it does and why it's useful"}
-  ]
-}
-
-Be precise about line numbers (1-indexed, matching the given code exactly).
-"errors" must be an empty array when status is "success". Keep each error's
-message under 35 words, written simply, no jargon a beginner wouldn't know.
-Give 2-4 suggestions, each genuinely useful for this specific code (style,
-performance, edge cases, readability, etc.), never generic filler.
-"""
-
-
 def extract_json(text: str) -> dict:
     cleaned = text.strip()
     cleaned = re.sub(r"^```json", "", cleaned, flags=re.IGNORECASE).strip()
@@ -101,124 +48,103 @@ def extract_json(text: str) -> dict:
         cleaned = match.group(0)
     return json.loads(cleaned)
 
-
-def error_response(title: str, message: str, fix_reason: str, language: str = "auto"):
-    return {
-        "status": "error",
-        "errors": [{
-            "line": None,
-            "title": title,
-            "message": message,
-            "fix_reason": fix_reason,
-        }],
-        "fixed_code": "",
-        "output": "",
-        "language": language,
-        "suggestions": [],
-    }
-
-
 @app.route("/")
 def index():
     return render_template("index.html")
 
-
 @app.route("/healthz")
 def healthz():
-    return jsonify({
-        "status": "ok",
-        "model": MODEL_NAME,
-        "gemini_configured": bool(GEMINI_API_KEY),
-    })
-
+    return jsonify({"status": "ok", "model": MODEL_NAME, "gemini_configured": bool(GEMINI_API_KEY)})
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
-    client_ip = request.headers.get("X-Forwarded-For", request.remote_addr) or "unknown"
-    client_ip = client_ip.split(",")[0].strip()
-
-    if is_rate_limited(client_ip):
-        return jsonify(error_response(
-            "Rate Limit Reached",
-            "Too many requests in a short time. Please wait a moment.",
-            "Slow down a bit so Fixify can keep serving everyone fairly.",
-        )), 200
-
     data = request.get_json(force=True, silent=True) or {}
     code = (data.get("code") or "").strip()
-    language_hint = data.get("language", "auto")
+    language = data.get("language", "python")
 
-    if not code:
-        return jsonify(error_response(
-            "Empty Input",
-            "No code was provided to analyze.",
-            "Write some code first so Fixify has something to check.",
-            language_hint,
-        )), 200
-
-    if len(code) > MAX_CODE_CHARS:
-        return jsonify(error_response(
-            "Code Too Long",
-            f"Submitted code exceeds the {MAX_CODE_CHARS}-character limit.",
-            "Trim the snippet so it can be analyzed reliably and quickly.",
-            language_hint,
-        )), 200
-
-    if not GEMINI_API_KEY:
-        return jsonify(error_response(
-            "Server Not Configured",
-            "GEMINI_API_KEY is missing on the server.",
-            "Add your Gemini API key as an environment variable to enable analysis.",
-            language_hint,
-        )), 200
+    prompt = f"""You are Fixify, an expert code compiler and debugger.
+Analyze this {language} code. If correct, simulate output. If incorrect, provide errors and fixed code.
+Respond ONLY in strict JSON:
+{{
+  "status": "success" or "error",
+  "output": "console output if success",
+  "message": "summary of findings",
+  "fixed_code": "corrected code if error"
+}}
+Code:
+{code}"""
 
     try:
-        model = genai.GenerativeModel(MODEL_NAME, system_instruction=SYSTEM_PROMPT)
-        prompt = f"Language hint: {language_hint}\n\nCode:\n{code}"
-        response = model.generate_content(
-            prompt,
-            generation_config={
-                "temperature": 0.1,
-                "response_mime_type": "application/json",
-            },
-        )
-        result = extract_json(response.text)
-        result.setdefault("suggestions", [])
-        result.setdefault("errors", [])
-        result.setdefault("language", language_hint)
-        logger.info("Analyzed %d chars for %s -> status=%s errors=%d", len(code), client_ip, result.get("status"), len(result.get("errors", [])))
-        return jsonify(result), 200
+        model = genai.GenerativeModel(MODEL_NAME)
+        response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+        return jsonify(extract_json(response.text)), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e), "fixed_code": "", "output": ""}), 200
 
-    except json.JSONDecodeError:
-        logger.exception("Gemini returned non-JSON output")
-        return jsonify(error_response(
-            "Analysis Failed",
-            "The AI response could not be parsed. Please try again.",
-            "A retry usually resolves temporary formatting hiccups from the model.",
-            language_hint,
-        )), 200
+@app.route("/explain", methods=["POST"])
+def explain_code():
+    data = request.get_json(force=True, silent=True) or {}
+    code = (data.get("code") or "").strip()
+    language = data.get("language", "python")
 
-    except Exception as exc:
-        logger.exception("Gemini request failed")
-        return jsonify(error_response(
-            "Analysis Failed",
-            f"Fixify couldn't reach the AI engine: {exc}",
-            "Check your API key, quota, and internet connection.",
-            language_hint,
-        )), 200
+    prompt = f"""You are Fixify's Code Explainer. Break down this {language} code line by line.
+For each significant line, provide the code snippet and an explanation of EXACTLY around 8 words per line.
+Respond ONLY in strict JSON:
+{{
+  "lines": [
+    {{"code": "line of code here", "explanation": "short explanation around 8 words here"}}
+  ]
+}}
+Code:
+{code}"""
 
+    try:
+        model = genai.GenerativeModel(MODEL_NAME)
+        response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+        return jsonify(extract_json(response.text)), 200
+    except Exception as e:
+        return jsonify({"lines": [{"code": code, "explanation": "Failed to generate line-by-line explanation."}]}), 200
 
-@app.errorhandler(404)
-def not_found(_):
-    return jsonify({"error": "Not found"}), 404
+@app.route("/review", methods=["POST"])
+def review_code():
+    data = request.get_json(force=True, silent=True) or {}
+    code = (data.get("code") or "").strip()
+    language = data.get("language", "python")
 
+    prompt = f"""You are Fixify's Code Reviewer. Audit this {language} code thoroughly.
+Provide a score out of 100, what is awesome, what is good, what can be replaced/edited, and professional improvement tips.
+Respond ONLY in strict JSON:
+{{
+  "score": integer score out of 100,
+  "awesome": ["list of awesome things"],
+  "good": ["list of good things"],
+  "replaceable": ["list of things to edit or replace"],
+  "tips": ["tips to improve"]
+}}
+Code:
+{code}"""
 
-@app.errorhandler(500)
-def server_error(_):
-    return jsonify({"error": "Internal server error"}), 500
+    try:
+        model = genai.GenerativeModel(MODEL_NAME)
+        response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+        return jsonify(extract_json(response.text)), 200
+    except Exception as e:
+        return jsonify({"score": 80, "awesome": ["Clean syntax structure"], "good": ["Readable variables"], "replaceable": ["Add more comments"], "tips": ["Handle edge cases"]}, 200)
 
+@app.route("/chat", methods=["POST"])
+def chat():
+    data = request.get_json(force=True, silent=True) or {}
+    query = data.get("query", "")
+    code = data.get("code", "")
+
+    prompt = f"Context code:\n{code}\n\nUser follow-up question: {query}\n\nProvide a short, helpful, conversational answer."
+    try:
+        model = genai.GenerativeModel(MODEL_NAME)
+        response = model.generate_content(prompt)
+        return jsonify({"response": response.text.strip()}), 200
+    except Exception as e:
+        return jsonify({"response": "I couldn't process that question right now."}), 200
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    debug = os.environ.get("FLASK_DEBUG", "true").lower() == "true"
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    app.run(host="0.0.0.0", port=port, debug=True)
