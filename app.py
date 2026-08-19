@@ -5,7 +5,7 @@ import time
 import logging
 from collections import defaultdict, deque
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 import google.generativeai as genai
 from dotenv import load_dotenv
 
@@ -218,6 +218,14 @@ def contact():
         logger.info("Contact message from %s <%s>: %s", name, email, message[:300])
         return jsonify({"status": "ok", "message": "Thanks — your message has been received."}), 200
     return render_template("contact.html")
+
+
+@app.route("/sw.js")
+def service_worker():
+    response = send_from_directory(app.static_folder, "sw.js", mimetype="application/javascript")
+    response.headers["Service-Worker-Allowed"] = "/"
+    response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
 @app.route("/healthz")
