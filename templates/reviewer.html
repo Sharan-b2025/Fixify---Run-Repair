@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixify — Code Reviewer</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%237c5cff%22/><text x=%2250%22 y=%2268%22 font-size=%2260%22 font-family=%22sans-serif%22 fill=%22%2305060a%22 text-anchor=%22middle%22>F</text></svg>">
+
+<link rel="stylesheet" href="/static/site.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{position:relative; min-height:100vh;}
+
+.glow-orb{position:fixed; border-radius:50%; filter:blur(90px); z-index:0; pointer-events:none; animation:float 12s ease-in-out infinite;}
+.orb1{width:420px;height:420px; background:radial-gradient(circle, var(--warn), transparent 70%); top:-150px; right:-100px; opacity:.22;}
+.orb2{width:380px;height:380px; background:radial-gradient(circle, var(--accent), transparent 70%); bottom:-140px; left:-100px; opacity:.28; animation-delay:3s;}
+@keyframes float{0%,100%{transform:translateY(0) translateX(0);} 50%{transform:translateY(30px) translateX(20px);}}
+@keyframes fadeIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+@keyframes popIn{0%{opacity:0; transform:scale(.94) translateY(8px);} 100%{opacity:1; transform:scale(1) translateY(0);}}
+
+.page-wrap{position:relative; z-index:1; max-width:760px; margin:0 auto; padding:34px 20px 80px;}
+.page-eyebrow{font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--warn); font-weight:700; margin-bottom:8px;}
+.page-title{font-family:'Space Grotesk',sans-serif; font-size:28px; font-weight:700; margin-bottom:6px;}
+.page-sub{color:var(--muted); font-size:14px; margin-bottom:26px; line-height:1.6;}
+
+.panel{border:1px solid var(--border); background:linear-gradient(180deg, var(--panel2), var(--panel)); border-radius:16px; padding:20px; margin-bottom:20px;}
+.panel-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:10px; flex-wrap:wrap;}
+.panel-title{font-weight:700; font-size:14px; display:flex; align-items:center; gap:8px;}
+select#langSelect{background:var(--panel2); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-family:inherit; font-size:12.5px; cursor:pointer;}
+select#langSelect:hover{border-color:var(--accent);}
+
+textarea#codeInput{
+  width:100%; min-height:220px; resize:vertical; background:var(--bg); color:var(--text);
+  border:1px solid var(--border); border-radius:10px; padding:14px; font-family:var(--mono-font);
+  font-size:13.5px; line-height:1.6; outline:none;
+}
+textarea#codeInput:focus{border-color:var(--warn);}
+
+.panel-actions{display:flex; align-items:center; gap:10px; margin-top:14px; flex-wrap:wrap;}
+.mini-btn{background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:8px; padding:8px 12px; cursor:pointer; font-size:12.5px; transition:.2s;}
+.mini-btn:hover{color:var(--text); border-color:var(--warn);}
+
+.primary-btn{
+  position:relative; overflow:hidden; margin-left:auto;
+  background:linear-gradient(135deg, var(--warn), #d98a1f); color:#241705; border:none;
+  padding:11px 20px; border-radius:10px; font-family:inherit; font-weight:700; font-size:13.5px; cursor:pointer;
+  display:flex; align-items:center; gap:8px; box-shadow:0 4px 20px rgba(255,180,84,.35); transition:.15s;
+}
+.primary-btn:hover{transform:translateY(-1px); box-shadow:0 6px 26px rgba(255,180,84,.55);}
+.primary-btn:disabled{opacity:.4; cursor:not-allowed; transform:none;}
+.primary-btn .spinner{width:13px; height:13px; border-radius:50%; border:2px solid rgba(36,23,5,.35); border-top-color:#241705; animation:spin .7s linear infinite; display:none;}
+.primary-btn.loading .spinner{display:inline-block;}
+.primary-btn.loading .btn-icon{display:none;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.placeholder{display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--muted); text-align:center; gap:8px; padding:40px 10px; animation:fadeIn .5s ease;}
+.placeholder .big-icon{font-size:38px; opacity:.5;}
+
+.card{border-radius:14px; padding:18px; border:1px solid var(--border); background:linear-gradient(180deg, var(--panel2), var(--panel)); animation:popIn .4s cubic-bezier(.2,.9,.25,1) both;}
+.card.error{border-color:rgba(255,77,109,.4);}
+.card-title{display:flex; align-items:center; gap:10px; font-weight:700; font-size:15px; margin-bottom:10px;}
+.err-msg{font-size:13.5px; color:var(--text); line-height:1.6;}
+
+/* ---- Score: the star of the page ---- */
+.score-panel{
+  border-radius:20px; padding:38px 20px 30px; text-align:center; margin-bottom:20px;
+  background:radial-gradient(ellipse at top, rgba(255,180,84,.12), transparent 70%), linear-gradient(180deg, var(--panel2), var(--panel));
+  border:1px solid var(--border); animation:popIn .5s cubic-bezier(.2,.9,.25,1) both;
+}
+.score-wrap{display:flex; flex-direction:column; align-items:center;}
+.score-ring-box{position:relative; width:220px; height:220px;}
+.score-ring{width:220px; height:220px; transform:rotate(-90deg); filter:drop-shadow(0 0 22px var(--score-glow, rgba(255,180,84,.35)));}
+.score-ring-bg{fill:none; stroke:var(--border); stroke-width:14;}
+.score-ring-fill{fill:none; stroke-width:14; stroke-linecap:round; transition:stroke-dashoffset 1.3s cubic-bezier(.2,.9,.25,1), stroke 0.4s ease;}
+.score-center{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none;}
+.score-number{font-family:'Space Grotesk',sans-serif; font-size:64px; font-weight:800; line-height:1;}
+.score-label{font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; margin-top:6px;}
+.score-verdict{text-align:center; font-size:14.5px; color:var(--text); max-width:440px; margin:18px auto 0; line-height:1.65;}
+
+.review-section{margin-top:18px;}
+.review-section h4{font-size:13px; text-transform:uppercase; letter-spacing:.5px; display:flex; align-items:center; gap:8px; margin-bottom:10px;}
+.review-list{list-style:none; display:flex; flex-direction:column; gap:8px;}
+.review-list li{font-size:13.5px; line-height:1.55; padding:11px 13px; border-radius:9px; border:1px solid var(--border);}
+.review-list.awesome li{background:rgba(61,220,151,.08); border-color:rgba(61,220,151,.3);}
+.review-list.good li{background:rgba(0,230,195,.06); border-color:rgba(0,230,195,.25);}
+.review-list.improve li{background:rgba(255,180,84,.08); border-color:rgba(255,180,84,.3);}
+.review-list.improve li b{display:block; margin-bottom:4px; color:var(--warn);}
+
+@media (max-width:600px){
+  .page-title{font-size:23px;}
+  .primary-btn{margin-left:0; width:100%; justify-content:center;}
+  .score-ring-box, .score-ring{width:180px; height:180px;}
+  .score-number{font-size:52px;}
+}
+</style>
+</head>
+<body>
+
+<div class="glow-orb orb1"></div>
+<div class="glow-orb orb2"></div>
+
+<header class="site-header">
+  <button class="hamburger" aria-label="Menu">☰</button>
+  <a href="/" class="brand-mini">
+    <div class="logo">F</div>
+    <div>
+      <strong>Fixify <span>Code Reviewer</span></strong>
+      <small>An honest mark, out of 100</small>
+    </div>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="header-controls">
+    <button class="theme-toggle-btn">🌙 Dark</button>
+  </div>
+</header>
+
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<nav class="drawer" id="drawer">
+  <div class="drawer-brand">
+    <div class="logo">F</div>
+    <strong>Fixify</strong>
+  </div>
+  <nav>
+    <a href="/">💻 Code Workspace</a>
+    <a href="/explainer" id="navExplainer">🔍 Code Explainer</a>
+    <a href="/reviewer" id="navReviewer">🏆 Code Reviewer</a>
+    <a href="/features">✨ Features</a>
+    <a href="/about">ℹ️ About Us</a>
+    <a href="/contact">✉️ Contact Us</a>
+  </nav>
+  <div class="drawer-footer">Fixify Run &amp; Repair<br>Built with Gemini · Flask</div>
+</nav>
+
+<main class="page-wrap">
+  <div class="page-eyebrow">Code Reviewer</div>
+  <h1 class="page-title">A full review, and a mark out of 100</h1>
+  <p class="page-sub">Paste your code below. Fixify scores it, calls out what's genuinely awesome, what's solid, and exactly what to fix — with a tip for every issue.</p>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">🏆 Your Code</div>
+      <select id="langSelect">
+        <option value="auto">Auto-detect</option>
+        <option value="python">Python</option>
+        <option value="javascript">JavaScript</option>
+        <option value="c">C</option>
+        <option value="cpp">C++</option>
+        <option value="java">Java</option>
+        <option value="go">Go</option>
+        <option value="html">HTML</option>
+        <option value="sql">SQL</option>
+      </select>
+    </div>
+    <textarea id="codeInput" placeholder="Paste your code here…" spellcheck="false"></textarea>
+    <div class="panel-actions">
+      <button class="mini-btn" id="clearBtn">Clear</button>
+      <button class="mini-btn" id="sampleBtn">Sample</button>
+      <button class="primary-btn" id="reviewBtn">
+        <span class="spinner"></span><span class="btn-icon">🏆</span><span>Review this code</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="outputArea">
+    <div class="placeholder" id="placeholder">
+      <div class="big-icon">🛠️</div>
+      <div>Paste some code above and hit <b>Review this code</b> to get your score.</div>
+    </div>
+  </div>
+</main>
+
+<script src="/static/site.js"></script>
+<script>
+const SAMPLES = {
+  auto: `print("Hello from Fixify!")`,
+  python: `print("Hello from Fixify!")`,
+  javascript: `console.log("Hello from Fixify!");`,
+  java: `public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello from Fixify!");\n    }\n}`,
+  c: `#include <stdio.h>\n\nint main() {\n    printf("Hello from Fixify!\\n");\n    return 0;\n}`,
+  cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << "Hello from Fixify!" << endl;\n    return 0;\n}`,
+  go: `package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello from Fixify!")\n}`,
+  html: `<!DOCTYPE html>\n<html>\n<head><title>Fixify</title></head>\n<body>\n  <h1>Hello from Fixify!</h1>\n</body>\n</html>`,
+  sql: `SELECT 'Hello from Fixify!' AS greeting;`
+};
+
+const codeInput = document.getElementById('codeInput');
+const langSelect = document.getElementById('langSelect');
+const reviewBtn = document.getElementById('reviewBtn');
+const outputArea = document.getElementById('outputArea');
+codeInput.value = SAMPLES.python;
+
+document.getElementById('sampleBtn').addEventListener('click', ()=>{
+  const key = SAMPLES[langSelect.value] ? langSelect.value : 'auto';
+  codeInput.value = SAMPLES[key];
+});
+document.getElementById('clearBtn').addEventListener('click', ()=>{ codeInput.value = ''; codeInput.focus(); });
+
+function speak(text){
+  if(!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 1; utter.pitch = 1;
+  speechSynthesis.speak(utter);
+}
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str ?? '';
+  return div.innerHTML;
+}
+async function postJSON(url, body){
+  const res = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  return res.json();
+}
+function setLoading(btn, loading){ btn.classList.toggle('loading', loading); }
+function clearOutput(){ outputArea.innerHTML = ''; }
+
+function scoreColor(score){
+  if(score >= 80) return getComputedStyle(document.documentElement).getPropertyValue('--success').trim();
+  if(score >= 50) return getComputedStyle(document.documentElement).getPropertyValue('--warn').trim();
+  return getComputedStyle(document.documentElement).getPropertyValue('--danger').trim();
+}
+
+async function runReview(){
+  const code = codeInput.value;
+  const language = langSelect.value;
+  if(!code.trim()) return;
+  setLoading(reviewBtn, true);
+  try{
+    const data = await postJSON('/review', {code, language});
+    renderReview(data);
+  }catch(err){
+    clearOutput();
+    outputArea.innerHTML = `<div class="card error"><div class="card-title">⚠️ Review Failed</div><div class="err-msg">Could not reach the Fixify server.</div></div>`;
+  }finally{
+    setLoading(reviewBtn, false);
+  }
+}
+
+function renderReview(data){
+  clearOutput();
+  const score = Math.max(0, Math.min(100, data.score || 0));
+  const r = 96;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference - (circumference * score / 100);
+  const color = scoreColor(score);
+  const glow = color.startsWith('#') ? color + '80' : color;
+
+  const scorePanel = document.createElement('div');
+  scorePanel.className = 'score-panel';
+  scorePanel.innerHTML = `
+    <div class="score-wrap">
+      <div class="score-ring-box" style="--score-glow:${glow}">
+        <svg class="score-ring" viewBox="0 0 220 220">
+          <circle class="score-ring-bg" cx="110" cy="110" r="${r}"></circle>
+          <circle class="score-ring-fill" cx="110" cy="110" r="${r}" stroke="${color}" stroke-dasharray="${circumference}" stroke-dashoffset="${circumference}"></circle>
+        </svg>
+        <div class="score-center">
+          <div class="score-number" style="color:${color}">${score}</div>
+          <div class="score-label">out of 100</div>
+        </div>
+      </div>
+      <div class="score-verdict">${escapeHtml(data.summary || '')}</div>
+    </div>`;
+  outputArea.appendChild(scorePanel);
+
+  requestAnimationFrame(()=>{
+    setTimeout(()=>{
+      const fill = scorePanel.querySelector('.score-ring-fill');
+      if(fill) fill.style.strokeDashoffset = offset;
+    }, 80);
+  });
+
+  const detailCard = document.createElement('div');
+  detailCard.className = 'card';
+  detailCard.innerHTML = `
+    <div class="card-title">🏆 Fixify Code Reviewer</div>
+    ${(data.awesome && data.awesome.length) ? `<div class="review-section"><h4>🌟 Awesome</h4><ul class="review-list awesome">${data.awesome.map(a=>`<li>${escapeHtml(a)}</li>`).join('')}</ul></div>` : ''}
+    ${(data.good && data.good.length) ? `<div class="review-section"><h4>👍 Good</h4><ul class="review-list good">${data.good.map(g=>`<li>${escapeHtml(g)}</li>`).join('')}</ul></div>` : ''}
+    ${(data.improve && data.improve.length) ? `<div class="review-section"><h4>🔧 Can Be Edited or Replaced</h4><ul class="review-list improve">${data.improve.map(im=>`<li><b>${escapeHtml(im.issue || '')}</b>${escapeHtml(im.tip || '')}</li>`).join('')}</ul></div>` : ''}
+  `;
+  outputArea.appendChild(detailCard);
+
+  speak(`Your code scored ${score} out of 100. ${data.summary || ''}`);
+}
+
+reviewBtn.addEventListener('click', runReview);
+</script>
+</body>
+</html>
