@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact Us — Fixify</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%237c5cff%22/><text x=%2250%22 y=%2268%22 font-size=%2260%22 font-family=%22sans-serif%22 fill=%22%2305060a%22 text-anchor=%22middle%22>F</text></svg>">
+<link rel="stylesheet" href="/static/site.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+  <button class="hamburger" aria-label="Menu">☰</button>
+  <a href="/" class="brand-mini">
+    <div class="logo">F</div>
+    <strong>Fixify <span>Run &amp; Repair</span></strong>
+  </a>
+  <div class="header-spacer"></div>
+  <button class="theme-toggle-btn">🌙 Dark</button>
+</header>
+
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<nav class="drawer" id="drawer">
+  <div class="drawer-brand"><div class="logo">F</div><strong>Fixify</strong></div>
+  <nav>
+    <a href="/">💻 Code Workspace</a>
+    <a href="/?mode=insight">🔍 Code Explainer</a>
+    <a href="/?mode=review">🏆 Code Reviewer</a>
+    <a href="/features">✨ Features</a>
+    <a href="/about">ℹ️ About Us</a>
+    <a href="/contact" class="active">✉️ Contact Us</a>
+  </nav>
+  <div class="drawer-footer">Fixify Run &amp; Repair<br>Built with Gemini · Flask</div>
+</nav>
+
+<main class="page-wrap">
+  <div class="page-hero">
+    <h1>Get in <span>Touch</span></h1>
+    <p>Found a bug, have a feature idea, or just want to say hi? Send a message below.</p>
+  </div>
+
+  <div class="content-card">
+    <form id="contactForm">
+      <div class="form-field">
+        <label for="cName">Name</label>
+        <input type="text" id="cName" required>
+      </div>
+      <div class="form-field">
+        <label for="cEmail">Email</label>
+        <input type="email" id="cEmail" required>
+      </div>
+      <div class="form-field">
+        <label for="cMessage">Message</label>
+        <textarea id="cMessage" rows="5" required></textarea>
+      </div>
+      <button type="submit" class="btn-primary">✉️ Send Message</button>
+      <div class="form-msg" id="formMsg"></div>
+    </form>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand"><div class="logo">F</div><strong>Fixify</strong></div>
+      <div class="footer-links">
+        <a href="/">Code Workspace</a>
+        <a href="/features">Features</a>
+        <a href="/about">About Us</a>
+        <a href="/contact">Contact Us</a>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">© 2026 Fixify Run &amp; Repair. Built with Gemini.</div>
+</footer>
+
+<script src="/static/site.js"></script>
+<script>
+document.getElementById('contactForm').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const msgBox = document.getElementById('formMsg');
+  const payload = {
+    name: document.getElementById('cName').value.trim(),
+    email: document.getElementById('cEmail').value.trim(),
+    message: document.getElementById('cMessage').value.trim()
+  };
+  try{
+    const res = await fetch('/contact', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+    const data = await res.json();
+    msgBox.textContent = data.message || '';
+    msgBox.className = 'form-msg show ' + (data.status === 'ok' ? 'ok' : 'bad');
+    if(data.status === 'ok') document.getElementById('contactForm').reset();
+  }catch(err){
+    msgBox.textContent = 'Could not send your message — please try again.';
+    msgBox.className = 'form-msg show bad';
+  }
+});
+</script>
+</body>
+</html>
