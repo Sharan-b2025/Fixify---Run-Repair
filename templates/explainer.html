@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixify — Code Explainer</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%237c5cff%22/><text x=%2250%22 y=%2268%22 font-size=%2260%22 font-family=%22sans-serif%22 fill=%22%2305060a%22 text-anchor=%22middle%22>F</text></svg>">
+
+<link rel="stylesheet" href="/static/site.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{position:relative; min-height:100vh;}
+
+.glow-orb{position:fixed; border-radius:50%; filter:blur(90px); z-index:0; pointer-events:none; animation:float 12s ease-in-out infinite;}
+.orb1{width:420px;height:420px; background:radial-gradient(circle, var(--accent), transparent 70%); top:-150px; left:-100px; opacity:.3;}
+.orb2{width:380px;height:380px; background:radial-gradient(circle, var(--accent2), transparent 70%); bottom:-140px; right:-100px; opacity:.25; animation-delay:3s;}
+@keyframes float{0%,100%{transform:translateY(0) translateX(0);} 50%{transform:translateY(30px) translateX(20px);}}
+@keyframes fadeIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+@keyframes popIn{0%{opacity:0; transform:scale(.94) translateY(8px);} 100%{opacity:1; transform:scale(1) translateY(0);}}
+
+.page-wrap{position:relative; z-index:1; max-width:760px; margin:0 auto; padding:34px 20px 80px;}
+.page-eyebrow{font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--accent2); font-weight:700; margin-bottom:8px;}
+.page-title{font-family:'Space Grotesk',sans-serif; font-size:28px; font-weight:700; margin-bottom:6px;}
+.page-sub{color:var(--muted); font-size:14px; margin-bottom:26px; line-height:1.6;}
+
+.panel{border:1px solid var(--border); background:linear-gradient(180deg, var(--panel2), var(--panel)); border-radius:16px; padding:20px; margin-bottom:20px;}
+.panel-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:10px; flex-wrap:wrap;}
+.panel-head-left{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+.panel-title{font-weight:700; font-size:14px; display:flex; align-items:center; gap:8px;}
+select#langSelect{background:var(--panel2); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-family:inherit; font-size:12.5px; cursor:pointer;}
+select#langSelect:hover{border-color:var(--accent);}
+
+#voiceToggle{background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:8px; padding:7px 11px; font-size:12.5px; cursor:pointer; transition:.2s; display:flex; align-items:center; gap:6px;}
+#voiceToggle.active{color:var(--accent2); border-color:var(--accent2);}
+
+textarea#codeInput{
+  width:100%; min-height:220px; resize:vertical; background:var(--bg); color:var(--text);
+  border:1px solid var(--border); border-radius:10px; padding:14px; font-family:var(--mono-font);
+  font-size:13.5px; line-height:1.6; outline:none;
+}
+textarea#codeInput:focus{border-color:var(--accent);}
+
+.panel-actions{display:flex; align-items:center; gap:10px; margin-top:14px; flex-wrap:wrap;}
+.mini-btn{background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:8px; padding:8px 12px; cursor:pointer; font-size:12.5px; transition:.2s;}
+.mini-btn:hover{color:var(--text); border-color:var(--accent2);}
+
+.primary-btn{
+  position:relative; overflow:hidden; margin-left:auto;
+  background:linear-gradient(135deg, var(--accent), #5a3ff0); color:#fff; border:none;
+  padding:11px 20px; border-radius:10px; font-family:inherit; font-weight:700; font-size:13.5px; cursor:pointer;
+  display:flex; align-items:center; gap:8px; box-shadow:0 4px 20px rgba(124,92,255,.4); transition:.15s;
+}
+.primary-btn:hover{transform:translateY(-1px); box-shadow:0 6px 26px rgba(124,92,255,.6);}
+.primary-btn:disabled{opacity:.4; cursor:not-allowed; transform:none;}
+.primary-btn .spinner{width:13px; height:13px; border-radius:50%; border:2px solid rgba(255,255,255,.35); border-top-color:#fff; animation:spin .7s linear infinite; display:none;}
+.primary-btn.loading .spinner{display:inline-block;}
+.primary-btn.loading .btn-icon{display:none;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.placeholder{display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--muted); text-align:center; gap:8px; padding:40px 10px; animation:fadeIn .5s ease;}
+.placeholder .big-icon{font-size:38px; opacity:.5;}
+
+.card{border-radius:14px; padding:18px; border:1px solid var(--border); background:linear-gradient(180deg, var(--panel2), var(--panel)); animation:popIn .4s cubic-bezier(.2,.9,.25,1) both;}
+.card.error{border-color:rgba(255,77,109,.4);}
+.card-title{display:flex; align-items:center; gap:10px; font-weight:700; font-size:15px; margin-bottom:10px;}
+.err-msg{font-size:13.5px; color:var(--text); line-height:1.6;}
+
+.insight-progress{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; font-size:12px; color:var(--muted);}
+.insight-bar{height:5px; background:var(--border); border-radius:3px; overflow:hidden; margin-bottom:16px;}
+.insight-bar-fill{height:100%; background:linear-gradient(90deg, var(--accent), var(--accent2)); transition:width .3s ease;}
+.insight-line-code{font-family:var(--mono-font); font-size:13px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:12px; color:var(--accent2); overflow-x:auto; white-space:pre;}
+.insight-explain{font-size:16px; line-height:1.6; margin-bottom:16px; font-weight:500;}
+.insight-actions{display:flex; gap:10px; flex-wrap:wrap;}
+.insight-actions button{border:1px solid var(--border); background:var(--panel); color:var(--text); padding:10px 16px; border-radius:9px; font-family:inherit; font-weight:600; font-size:13px; cursor:pointer; transition:.2s; display:flex; align-items:center; gap:6px;}
+.insight-actions button:hover{border-color:var(--accent);}
+.insight-actions .next-btn{background:linear-gradient(135deg, var(--accent), #5a3ff0); color:#fff; border:none; margin-left:auto;}
+.insight-more{margin-top:14px; font-size:13px; color:var(--muted); line-height:1.6; background:var(--panel); border-left:2px solid var(--accent2); padding:12px 14px; border-radius:8px; display:none;}
+.insight-more.show{display:block; animation:fadeIn .3s ease;}
+.insight-hint{text-align:center; font-size:11px; color:var(--muted); margin-top:10px;}
+.insight-done{text-align:center; padding:34px 10px;}
+.insight-done .big-icon{font-size:44px; margin-bottom:12px;}
+
+.mic{flex-shrink:0; width:24px; height:24px; border-radius:50%; background:var(--accent); display:flex; align-items:center; justify-content:center; font-size:12px;}
+.mic.speaking{animation:micPulse 1s ease-in-out infinite;}
+@keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(124,92,255,.6);} 50%{box-shadow:0 0 0 8px rgba(124,92,255,0);}}
+
+@media (max-width:600px){
+  .page-title{font-size:23px;}
+  .primary-btn{margin-left:0; width:100%; justify-content:center;}
+}
+</style>
+</head>
+<body>
+
+<div class="glow-orb orb1"></div>
+<div class="glow-orb orb2"></div>
+
+<header class="site-header">
+  <button class="hamburger" aria-label="Menu">☰</button>
+  <a href="/" class="brand-mini">
+    <div class="logo">F</div>
+    <div>
+      <strong>Fixify <span>Code Explainer</span></strong>
+      <small>Line-by-line, in plain language</small>
+    </div>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="header-controls">
+    <button class="theme-toggle-btn">🌙 Dark</button>
+  </div>
+</header>
+
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<nav class="drawer" id="drawer">
+  <div class="drawer-brand">
+    <div class="logo">F</div>
+    <strong>Fixify</strong>
+  </div>
+  <nav>
+    <a href="/">💻 Code Workspace</a>
+    <a href="/explainer" id="navExplainer">🔍 Code Explainer</a>
+    <a href="/reviewer" id="navReviewer">🏆 Code Reviewer</a>
+    <a href="/features">✨ Features</a>
+    <a href="/about">ℹ️ About Us</a>
+    <a href="/contact">✉️ Contact Us</a>
+  </nav>
+  <div class="drawer-footer">Fixify Run &amp; Repair<br>Built with Gemini · Flask</div>
+</nav>
+
+<main class="page-wrap">
+  <div class="page-eyebrow">Code Explainer</div>
+  <h1 class="page-title">Understand your code, one line at a time</h1>
+  <p class="page-sub">Paste your code below. Fixify reads it back line by line, in plain 8-word bites, spoken out loud — ask for more detail on any line you don't follow, then press Enter to move on.</p>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-head-left">
+        <div class="panel-title">🔍 Your Code</div>
+        <select id="langSelect">
+          <option value="auto">Auto-detect</option>
+          <option value="python">Python</option>
+          <option value="javascript">JavaScript</option>
+          <option value="c">C</option>
+          <option value="cpp">C++</option>
+          <option value="java">Java</option>
+          <option value="go">Go</option>
+          <option value="html">HTML</option>
+          <option value="sql">SQL</option>
+        </select>
+      </div>
+      <button id="voiceToggle" class="active">🔊 Voice</button>
+    </div>
+    <textarea id="codeInput" placeholder="Paste your code here…" spellcheck="false"></textarea>
+    <div class="panel-actions">
+      <button class="mini-btn" id="clearBtn">Clear</button>
+      <button class="mini-btn" id="sampleBtn">Sample</button>
+      <button class="primary-btn" id="explainBtn">
+        <span class="spinner"></span><span class="btn-icon">🔍</span><span>Explain this code</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="outputArea">
+    <div class="placeholder" id="placeholder">
+      <div class="big-icon">🛠️</div>
+      <div>Paste some code above and hit <b>Explain this code</b> to start the walkthrough.</div>
+    </div>
+  </div>
+</main>
+
+<script src="/static/site.js"></script>
+<script>
+const SAMPLES = {
+  auto: `print("Hello from Fixify!")`,
+  python: `print("Hello from Fixify!")`,
+  javascript: `console.log("Hello from Fixify!");`,
+  java: `public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello from Fixify!");\n    }\n}`,
+  c: `#include <stdio.h>\n\nint main() {\n    printf("Hello from Fixify!\\n");\n    return 0;\n}`,
+  cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << "Hello from Fixify!" << endl;\n    return 0;\n}`,
+  go: `package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello from Fixify!")\n}`,
+  html: `<!DOCTYPE html>\n<html>\n<head><title>Fixify</title></head>\n<body>\n  <h1>Hello from Fixify!</h1>\n</body>\n</html>`,
+  sql: `SELECT 'Hello from Fixify!' AS greeting;`
+};
+
+const codeInput = document.getElementById('codeInput');
+const langSelect = document.getElementById('langSelect');
+const explainBtn = document.getElementById('explainBtn');
+const outputArea = document.getElementById('outputArea');
+codeInput.value = SAMPLES.python;
+
+document.getElementById('sampleBtn').addEventListener('click', ()=>{
+  const key = SAMPLES[langSelect.value] ? langSelect.value : 'auto';
+  codeInput.value = SAMPLES[key];
+});
+document.getElementById('clearBtn').addEventListener('click', ()=>{ codeInput.value = ''; codeInput.focus(); });
+
+let voiceOn = true;
+const voiceToggle = document.getElementById('voiceToggle');
+voiceToggle.addEventListener('click', ()=>{
+  voiceOn = !voiceOn;
+  voiceToggle.textContent = voiceOn ? '🔊 Voice' : '🔈 Voice';
+  voiceToggle.classList.toggle('active', voiceOn);
+  if(!voiceOn) speechSynthesis.cancel();
+});
+
+function speak(text, micEl){
+  if(!voiceOn || !('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 1; utter.pitch = 1;
+  if(micEl){
+    utter.onstart = ()=>micEl.classList.add('speaking');
+    utter.onend = ()=>micEl.classList.remove('speaking');
+  }
+  speechSynthesis.speak(utter);
+}
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str ?? '';
+  return div.innerHTML;
+}
+async function postJSON(url, body){
+  const res = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  return res.json();
+}
+function setLoading(btn, loading){ btn.classList.toggle('loading', loading); }
+function clearOutput(){ outputArea.innerHTML = ''; }
+
+let insightLines = [];
+let insightIndex = 0;
+let insightActive = false;
+let currentCode = '';
+
+async function runExplain(){
+  const code = codeInput.value;
+  const language = langSelect.value;
+  if(!code.trim()) return;
+  currentCode = code;
+  setLoading(explainBtn, true);
+  try{
+    const data = await postJSON('/insight', {code, language});
+    insightLines = data.lines || [];
+    insightIndex = 0;
+    insightActive = true;
+    clearOutput();
+
+    if(!insightLines.length){
+      outputArea.innerHTML = `<div class="card"><div class="card-title">🔍 Fixify Code Explainer</div><div class="err-msg">${escapeHtml(data.summary || 'Nothing to explain yet — add some code first.')}</div></div>`;
+      insightActive = false;
+      return;
+    }
+
+    const introCard = document.createElement('div');
+    introCard.className = 'card';
+    introCard.innerHTML = `<div class="card-title">🔍 Fixify Code Explainer</div><div class="err-msg">${escapeHtml(data.summary || '')}</div>`;
+    outputArea.appendChild(introCard);
+
+    renderInsightStep();
+  }catch(err){
+    clearOutput();
+    outputArea.innerHTML = `<div class="card error"><div class="card-title">⚠️ Explainer Failed</div><div class="err-msg">Could not reach the Fixify server.</div></div>`;
+    insightActive = false;
+  }finally{
+    setLoading(explainBtn, false);
+  }
+}
+
+function renderInsightStep(){
+  document.getElementById('insightStepCard')?.remove();
+  const line = insightLines[insightIndex];
+  const codeLines = currentCode.split('\n');
+  const lineText = codeLines[line.line - 1] || '';
+
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.id = 'insightStepCard';
+  card.innerHTML = `
+    <div class="insight-progress"><span>Line ${line.line}</span><span>${insightIndex + 1} of ${insightLines.length}</span></div>
+    <div class="insight-bar"><div class="insight-bar-fill" style="width:${((insightIndex+1)/insightLines.length)*100}%"></div></div>
+    <div class="insight-line-code">${escapeHtml(lineText)}</div>
+    <div class="insight-explain">${escapeHtml(line.explanation || '')}</div>
+    <div class="insight-more" id="insightMoreBox"></div>
+    <div class="insight-actions">
+      <button id="insightMoreBtn">❓ I don't understand — explain more</button>
+      <button class="next-btn" id="insightNextBtn">${insightIndex === insightLines.length - 1 ? '✔ Finish' : 'Got it, next line ↵'}</button>
+    </div>
+    <div class="insight-hint">Press Enter ↵ to move to the next line</div>`;
+  outputArea.appendChild(card);
+
+  speak(line.explanation || '');
+
+  document.getElementById('insightMoreBtn').addEventListener('click', async ()=>{
+    const box = document.getElementById('insightMoreBox');
+    box.classList.add('show');
+    box.textContent = 'Thinking…';
+    try{
+      const res = await postJSON('/insight/more', {code: currentCode, line: line.line, explanation: line.explanation});
+      box.textContent = res.more || 'No extra detail available.';
+      speak(res.more || '');
+    }catch(e){
+      box.textContent = 'Could not reach the server.';
+    }
+  });
+  document.getElementById('insightNextBtn').addEventListener('click', insightNext);
+}
+
+function insightNext(){
+  if(insightIndex < insightLines.length - 1){
+    insightIndex++;
+    renderInsightStep();
+  } else {
+    insightActive = false;
+    document.getElementById('insightStepCard')?.remove();
+    const doneCard = document.createElement('div');
+    doneCard.className = 'card insight-done';
+    doneCard.innerHTML = `<div class="big-icon">🎉</div><div class="card-title" style="justify-content:center;">All done!</div><div class="err-msg">You've walked through every line of this code.</div>`;
+    outputArea.appendChild(doneCard);
+    speak('Nice work! You have walked through every line of this code.');
+  }
+}
+
+explainBtn.addEventListener('click', runExplain);
+document.addEventListener('keydown', e=>{
+  if(!insightActive) return;
+  const active = document.activeElement;
+  if(active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+  if(e.key === 'Enter'){ e.preventDefault(); insightNext(); }
+});
+</script>
+</body>
+</html>
