@@ -34,9 +34,18 @@ function fixifyInitDrawer(){
   document.addEventListener('keydown', e=>{ if(e.key === 'Escape') close(); });
 }
 
+function fixifyRegisterServiceWorker(){
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      navigator.serviceWorker.register('/sw.js').catch(()=>{});
+    });
+  }
+}
+
 document.addEventListener('DOMContentLoaded', ()=>{
   fixifyInitTheme();
   fixifyInitDrawer();
+  fixifyRegisterServiceWorker();
   document.querySelectorAll('.theme-toggle-btn').forEach(btn=>{
     btn.addEventListener('click', fixifyToggleTheme);
   });
