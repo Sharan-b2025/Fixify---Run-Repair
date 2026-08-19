@@ -186,6 +186,16 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/explainer")
+def explainer_page():
+    return render_template("explainer.html")
+
+
+@app.route("/reviewer")
+def reviewer_page():
+    return render_template("reviewer.html")
+
+
 @app.route("/about")
 def about():
     return render_template("about.html")
