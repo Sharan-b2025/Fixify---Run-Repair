@@ -1,0 +1,16 @@
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<nav class="drawer" id="drawer">
+  <div class="drawer-brand">
+    <img class="logo" src="/static/icons/icon-192.png" alt="Fixify logo">
+    <strong>Fixify</strong>
+  </div>
+  <nav>
+    <a href="/" class="{{ 'active' if active == 'workspace' else '' }}">💻 Code Workspace</a>
+    <a href="/explainer" class="{{ 'active' if active == 'explainer' else '' }}">🔍 Code Explainer</a>
+    <a href="/reviewer" class="{{ 'active' if active == 'reviewer' else '' }}">🏆 Code Reviewer</a>
+    <a href="/features" class="{{ 'active' if active == 'features' else '' }}">✨ Features</a>
+    <a href="/about" class="{{ 'active' if active == 'about' else '' }}">ℹ️ About Us</a>
+    <a href="/contact" class="{{ 'active' if active == 'contact' else '' }}">✉️ Contact Us</a>
+  </nav>
+  <div class="drawer-footer">Fixify Run &amp; Repair<br>Built with Gemini · Flask</div>
+</nav>
