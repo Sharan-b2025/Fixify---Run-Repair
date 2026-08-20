@@ -216,17 +216,8 @@ def features():
     return render_template("features.html", active="features")
 
 
-@app.route("/contact", methods=["GET", "POST"])
+@app.route("/contact")
 def contact():
-    if request.method == "POST":
-        data = request.get_json(force=True, silent=True) or {}
-        name = (data.get("name") or "").strip()
-        email = (data.get("email") or "").strip()
-        message = (data.get("message") or "").strip()
-        if not name or not email or not message:
-            return jsonify({"status": "error", "message": "Please fill in every field."}), 200
-        logger.info("Contact message from %s <%s>: %s", name, email, message[:300])
-        return jsonify({"status": "ok", "message": "Thanks — your message has been received."}), 200
     return render_template("contact.html", active="contact")
 
 
