@@ -21,53 +21,26 @@
 
 <main class="page-wrap">
   <div class="page-hero">
-    <h1>Get in <span>Touch</span></h1>
-    <p>Found a bug, have a feature idea, or just want to say hi? Send a message below.</p>
+    <h1>Contact <span>Us</span></h1>
+    <p>Questions, feedback, or just want to say hi? Reach out.</p>
   </div>
 
-  <div class="content-card">
-    <form id="contactForm">
-      <div class="form-field">
-        <label for="cName">Name</label>
-        <input type="text" id="cName" required>
-      </div>
-      <div class="form-field">
-        <label for="cEmail">Email</label>
-        <input type="email" id="cEmail" required>
-      </div>
-      <div class="form-field">
-        <label for="cMessage">Message</label>
-        <textarea id="cMessage" rows="5" required></textarea>
-      </div>
-      <button type="submit" class="btn-primary">✉️ Send Message</button>
-      <div class="form-msg" id="formMsg"></div>
-    </form>
+  <div class="contact-cards">
+    <div class="contact-card">
+      <div class="contact-icon">📞</div>
+      <div class="contact-label">Phone</div>
+      <a class="contact-value" href="tel:+919043342412">+91 90433 42412</a>
+    </div>
+    <div class="contact-card">
+      <div class="contact-icon">✉️</div>
+      <div class="contact-label">Email</div>
+      <a class="contact-value" href="mailto:sharanbalaji2025@gmail.com">sharanbalaji2025@gmail.com</a>
+    </div>
   </div>
 </main>
 
 {% include "_footer.html" %}
 
 <script src="/static/site.js"></script>
-<script>
-document.getElementById('contactForm').addEventListener('submit', async e=>{
-  e.preventDefault();
-  const msgBox = document.getElementById('formMsg');
-  const payload = {
-    name: document.getElementById('cName').value.trim(),
-    email: document.getElementById('cEmail').value.trim(),
-    message: document.getElementById('cMessage').value.trim()
-  };
-  try{
-    const res = await fetch('/contact', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
-    const data = await res.json();
-    msgBox.textContent = data.message || '';
-    msgBox.className = 'form-msg show ' + (data.status === 'ok' ? 'ok' : 'bad');
-    if(data.status === 'ok') document.getElementById('contactForm').reset();
-  }catch(err){
-    msgBox.textContent = 'Could not send your message — please try again.';
-    msgBox.className = 'form-msg show bad';
-  }
-});
-</script>
 </body>
 </html>
