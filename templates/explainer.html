@@ -3,180 +3,241 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fixify — Code Explainer</title>
-<link rel="icon" type="image/png" sizes="32x32" href="/static/icons/icon-32.png">
-<link rel="icon" type="image/x-icon" href="/static/icons/favicon.ico">
-<link rel="manifest" href="/static/manifest.json">
-<meta name="theme-color" content="#7c5cff">
-<link rel="apple-touch-icon" href="/static/icons/icon-180.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Fixify">
+<title>Code Explainer — Fixify</title>
+{% include "_pwa_head.html" %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/eclipse.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Lexend:wght@400;500;600&display=swap" rel="stylesheet">
 
 <style>
 *{box-sizing:border-box; margin:0; padding:0;}
 html,body{height:100%;}
-body{position:relative; min-height:100vh;}
+body{overflow:hidden; position:relative;}
 
+#bg-canvas{position:fixed; inset:0; z-index:0; opacity:.5;}
 .glow-orb{position:fixed; border-radius:50%; filter:blur(90px); z-index:0; pointer-events:none; animation:float 12s ease-in-out infinite;}
-.orb1{width:420px;height:420px; background:radial-gradient(circle, var(--accent), transparent 70%); top:-150px; left:-100px; opacity:.3;}
-.orb2{width:380px;height:380px; background:radial-gradient(circle, var(--accent2), transparent 70%); bottom:-140px; right:-100px; opacity:.25; animation-delay:3s;}
+.orb1{width:420px;height:420px; background:radial-gradient(circle, var(--accent), transparent 70%); top:-150px; left:-100px; opacity:.35;}
+.orb2{width:380px;height:380px; background:radial-gradient(circle, var(--accent2), transparent 70%); bottom:-140px; right:-100px; opacity:.3; animation-delay:3s;}
 @keyframes float{0%,100%{transform:translateY(0) translateX(0);} 50%{transform:translateY(30px) translateX(20px);}}
-@keyframes fadeIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
-@keyframes popIn{0%{opacity:0; transform:scale(.94) translateY(8px);} 100%{opacity:1; transform:scale(1) translateY(0);}}
 
-.page-wrap{position:relative; z-index:1; max-width:760px; margin:0 auto; padding:34px 20px 80px;}
-.page-eyebrow{font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--accent2); font-weight:700; margin-bottom:8px;}
-.page-title{font-family:'Space Grotesk',sans-serif; font-size:28px; font-weight:700; margin-bottom:6px;}
-.page-sub{color:var(--muted); font-size:14px; margin-bottom:26px; line-height:1.6;}
-
-.panel{border:1px solid var(--border); background:linear-gradient(180deg, var(--panel2), var(--panel)); border-radius:16px; padding:20px; margin-bottom:20px;}
-.panel-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:10px; flex-wrap:wrap;}
-.panel-head-left{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
-.panel-title{font-weight:700; font-size:14px; display:flex; align-items:center; gap:8px;}
-select#langSelect{background:var(--panel2); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-family:inherit; font-size:12.5px; cursor:pointer;}
-select#langSelect:hover{border-color:var(--accent);}
-
-#voiceToggle{background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:8px; padding:7px 11px; font-size:12.5px; cursor:pointer; transition:.2s; display:flex; align-items:center; gap:6px;}
+.brand-mini small{display:block; color:var(--muted); font-size:10.5px; font-weight:400; margin-top:1px;}
+.header-controls{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+select{background:var(--panel2); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-family:inherit; font-size:13px; cursor:pointer; transition:.2s;}
+select:hover{border-color:var(--accent);}
+.font-ctrl{display:flex; align-items:center; gap:2px; background:var(--panel2); border:1px solid var(--border); border-radius:8px; padding:2px;}
+.font-ctrl button{background:none; border:none; color:var(--text); padding:6px 9px; cursor:pointer; font-size:13px; border-radius:6px;}
+.font-ctrl button:hover{background:rgba(124,92,255,.15);}
 #voiceToggle.active{color:var(--accent2); border-color:var(--accent2);}
+#dyslexiaToggle.active{color:var(--accent2); border-color:var(--accent2);}
 
-textarea#codeInput{
-  width:100%; min-height:220px; resize:vertical; background:var(--bg); color:var(--text);
-  border:1px solid var(--border); border-radius:10px; padding:14px; font-family:var(--mono-font);
-  font-size:13.5px; line-height:1.6; outline:none;
+.split{position:relative; z-index:1; display:flex; height:calc(100vh - 63px);}
+.pane{flex:1; display:flex; flex-direction:column; background:var(--panel); border-right:1px solid var(--border); position:relative;}
+.pane:last-child{border-right:none;}
+
+.pane-head{display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid var(--border); background:var(--panel2); flex-wrap:wrap; gap:6px;}
+.pane-head .dots{display:flex; gap:6px;}
+.pane-head .dots span{width:10px; height:10px; border-radius:50%;}
+.dots span:nth-child(1){background:#ff5f56;} .dots span:nth-child(2){background:#ffbd2e;} .dots span:nth-child(3){background:#27c93f;}
+.pane-title{font-size:13px; color:var(--muted); font-weight:600; letter-spacing:.4px; text-transform:uppercase;}
+.pane-actions{display:flex; gap:6px; flex-wrap:wrap;}
+.mini-btn{background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:5px 8px; cursor:pointer; font-size:12px; transition:.2s;}
+.mini-btn:hover{color:var(--text); border-color:var(--accent2); box-shadow:0 0 8px rgba(0,230,195,.3);}
+
+.CodeMirror{flex:1; height:100% !important; font-family:var(--mono-font) !important; font-size:14.5px; line-height:1.55; background:var(--panel) !important;}
+.CodeMirror.dyslexia-font{font-family:'Lexend', sans-serif !important; letter-spacing:.2px; line-height:1.9;}
+.editor-wrap{flex:1; overflow:hidden; position:relative;}
+.cm-insight-line{background:rgba(124,92,255,.16) !important;}
+.cm-insight-gutter{color:var(--accent) !important; font-weight:700;}
+
+.left-footer{display:flex; flex-direction:column; gap:10px; padding:12px 16px; border-top:1px solid var(--border); background:var(--panel2);}
+.mode-btn{
+  width:100%; border:none; background:linear-gradient(135deg, var(--accent), var(--accent2)); color:#04211c;
+  padding:12px 14px; border-radius:10px; font-family:inherit; font-weight:700; font-size:14px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:7px; transition:.15s;
+  box-shadow:0 4px 20px rgba(0,230,195,.3);
 }
-textarea#codeInput:focus{border-color:var(--accent);}
-
-.panel-actions{display:flex; align-items:center; gap:10px; margin-top:14px; flex-wrap:wrap;}
-.mini-btn{background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:8px; padding:8px 12px; cursor:pointer; font-size:12.5px; transition:.2s;}
-.mini-btn:hover{color:var(--text); border-color:var(--accent2);}
-
-.primary-btn{
-  position:relative; overflow:hidden; margin-left:auto;
-  background:linear-gradient(135deg, var(--accent), #5a3ff0); color:#fff; border:none;
-  padding:11px 20px; border-radius:10px; font-family:inherit; font-weight:700; font-size:13.5px; cursor:pointer;
-  display:flex; align-items:center; gap:8px; box-shadow:0 4px 20px rgba(124,92,255,.4); transition:.15s;
-}
-.primary-btn:hover{transform:translateY(-1px); box-shadow:0 6px 26px rgba(124,92,255,.6);}
-.primary-btn:disabled{opacity:.4; cursor:not-allowed; transform:none;}
-.primary-btn .spinner{width:13px; height:13px; border-radius:50%; border:2px solid rgba(255,255,255,.35); border-top-color:#fff; animation:spin .7s linear infinite; display:none;}
-.primary-btn.loading .spinner{display:inline-block;}
-.primary-btn.loading .btn-icon{display:none;}
+.mode-btn:hover{transform:translateY(-2px); box-shadow:0 6px 26px rgba(0,230,195,.45);}
+.mode-btn .spinner{width:13px; height:13px; border-radius:50%; border:2px solid rgba(4,33,28,.3); border-top-color:#04211c; animation:spin .7s linear infinite; display:none;}
+.mode-btn.loading .spinner{display:inline-block;}
+.mode-btn.loading .btn-icon{display:none;}
 @keyframes spin{to{transform:rotate(360deg);}}
 
-.placeholder{display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--muted); text-align:center; gap:8px; padding:40px 10px; animation:fadeIn .5s ease;}
-.placeholder .big-icon{font-size:38px; opacity:.5;}
+.util-row{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+.stat-chip{font-size:11.5px; color:var(--muted); display:flex; gap:14px;}
+.stat-chip span b{color:var(--text);}
 
-.card{border-radius:14px; padding:18px; border:1px solid var(--border); background:linear-gradient(180deg, var(--panel2), var(--panel)); animation:popIn .4s cubic-bezier(.2,.9,.25,1) both;}
+.output-area{flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:16px;}
+.output-area::-webkit-scrollbar{width:8px;}
+.output-area::-webkit-scrollbar-thumb{background:var(--border); border-radius:4px;}
+
+.placeholder{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--muted); text-align:center; gap:10px; animation:fadeIn .6s ease;}
+.placeholder .big-icon{font-size:46px; opacity:.5; animation:bob 3s ease-in-out infinite;}
+@keyframes bob{0%,100%{transform:translateY(0);} 50%{transform:translateY(-10px);}}
+@keyframes fadeIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+@keyframes popIn{0%{opacity:0; transform:scale(.92) translateY(10px);} 100%{opacity:1; transform:scale(1) translateY(0);}}
+
+.card{border-radius:14px; padding:18px; border:1px solid var(--border); background:linear-gradient(180deg, var(--panel2), var(--panel)); animation:popIn .45s cubic-bezier(.2,.9,.25,1) both;}
+.card.success{border-color:rgba(61,220,151,.4);}
 .card.error{border-color:rgba(255,77,109,.4);}
-.card-title{display:flex; align-items:center; gap:10px; font-weight:700; font-size:15px; margin-bottom:10px;}
-.err-msg{font-size:13.5px; color:var(--text); line-height:1.6;}
+.card.insight{border-color:rgba(124,92,255,.4); box-shadow:0 0 24px rgba(124,92,255,.1);}
+.card-title{display:flex; align-items:center; gap:10px; font-weight:700; font-size:15px; margin-bottom:10px; flex-wrap:wrap;}
+.err-msg{font-size:13.5px; color:var(--text); line-height:1.6; margin-bottom:12px;}
+
+.toast{position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--panel2); border:1px solid var(--accent); color:var(--text); padding:10px 18px; border-radius:10px; font-size:13px; z-index:50; opacity:0; transition:.3s; pointer-events:none;}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
 
 .insight-progress{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; font-size:12px; color:var(--muted);}
 .insight-bar{height:5px; background:var(--border); border-radius:3px; overflow:hidden; margin-bottom:16px;}
 .insight-bar-fill{height:100%; background:linear-gradient(90deg, var(--accent), var(--accent2)); transition:width .3s ease;}
 .insight-line-code{font-family:var(--mono-font); font-size:13px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:12px; color:var(--accent2); overflow-x:auto; white-space:pre;}
-.insight-explain{font-size:16px; line-height:1.6; margin-bottom:16px; font-weight:500;}
+.insight-explain{font-size:15px; line-height:1.6; margin-bottom:16px;}
 .insight-actions{display:flex; gap:10px; flex-wrap:wrap;}
 .insight-actions button{border:1px solid var(--border); background:var(--panel); color:var(--text); padding:10px 16px; border-radius:9px; font-family:inherit; font-weight:600; font-size:13px; cursor:pointer; transition:.2s; display:flex; align-items:center; gap:6px;}
 .insight-actions button:hover{border-color:var(--accent);}
 .insight-actions .next-btn{background:linear-gradient(135deg, var(--accent), #5a3ff0); color:#fff; border:none; margin-left:auto;}
 .insight-more{margin-top:14px; font-size:13px; color:var(--muted); line-height:1.6; background:var(--panel); border-left:2px solid var(--accent2); padding:12px 14px; border-radius:8px; display:none;}
 .insight-more.show{display:block; animation:fadeIn .3s ease;}
-.insight-hint{text-align:center; font-size:11px; color:var(--muted); margin-top:10px;}
-.insight-done{text-align:center; padding:34px 10px;}
+.insight-done{text-align:center; padding:30px 10px;}
 .insight-done .big-icon{font-size:44px; margin-bottom:12px;}
 
-.mic{flex-shrink:0; width:24px; height:24px; border-radius:50%; background:var(--accent); display:flex; align-items:center; justify-content:center; font-size:12px;}
-.mic.speaking{animation:micPulse 1s ease-in-out infinite;}
-@keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(124,92,255,.6);} 50%{box-shadow:0 0 0 8px rgba(124,92,255,0);}}
+.mobile-tabbar{display:none; position:fixed; bottom:0; left:0; right:0; z-index:45; background:var(--panel2); border-top:1px solid var(--border);}
+.mobile-tabbar button{flex:1; padding:13px; background:none; border:none; color:var(--muted); font-family:inherit; font-weight:700; font-size:12.5px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px;}
+.mobile-tabbar button.active{color:var(--accent2); box-shadow:inset 0 2px 0 var(--accent2);}
 
-@media (max-width:600px){
-  .page-title{font-size:23px;}
-  .primary-btn{margin-left:0; width:100%; justify-content:center;}
+@media (max-width:820px){
+  .split{height:calc(100vh - 63px - 52px);}
+  .pane{display:none; border-right:none; width:100%;}
+  .pane.mobile-active{display:flex;}
+  .mobile-tabbar{display:flex;}
+  .pane-actions .fs-hide-mobile{display:none;}
+  .CodeMirror{font-size:15px;}
 }
 </style>
 </head>
 <body>
 
+<canvas id="bg-canvas"></canvas>
 <div class="glow-orb orb1"></div>
 <div class="glow-orb orb2"></div>
 
 <header class="site-header">
   <button class="hamburger" aria-label="Menu">☰</button>
-  <a href="/" class="brand-mini">
-    <img class="logo" src="/static/icons/icon-192.png" alt="Fixify logo">
-    <div>
-      <strong>Fixify <span>Code Explainer</span></strong>
-      <small>Line-by-line, in plain language</small>
-    </div>
-  </a>
+  {% include "_brand.html" %}
   <div class="header-spacer"></div>
   <div class="header-controls">
+    <select id="langSelect">
+      <option value="auto">Auto-detect</option>
+      <option value="python">Python</option>
+      <option value="javascript">JavaScript</option>
+      <option value="c">C</option>
+      <option value="cpp">C++</option>
+      <option value="java">Java</option>
+      <option value="go">Go</option>
+      <option value="html">HTML</option>
+      <option value="sql">SQL</option>
+    </select>
+    <div class="font-ctrl" title="Editor font size">
+      <button id="fontMinus">A−</button>
+      <button id="fontPlus">A+</button>
+    </div>
+    <button class="header-btn" id="dyslexiaToggle" title="Dyslexia-friendly font">Aa Font</button>
+    <button class="header-btn" id="voiceToggle" title="Toggle voice narration">🔊 Voice</button>
     <button class="theme-toggle-btn">🌙 Dark</button>
   </div>
 </header>
 
-<div class="drawer-overlay" id="drawerOverlay"></div>
-<nav class="drawer" id="drawer">
-  <div class="drawer-brand">
-    <img class="logo" src="/static/icons/icon-192.png" alt="Fixify logo">
-    <strong>Fixify</strong>
-  </div>
-  <nav>
-    <a href="/">💻 Code Workspace</a>
-    <a href="/explainer" id="navExplainer">🔍 Code Explainer</a>
-    <a href="/reviewer" id="navReviewer">🏆 Code Reviewer</a>
-    <a href="/features">✨ Features</a>
-    <a href="/about">ℹ️ About Us</a>
-    <a href="/contact">✉️ Contact Us</a>
-  </nav>
-  <div class="drawer-footer">Fixify Run &amp; Repair<br>Built with Gemini · Flask</div>
-</nav>
+{% include "_drawer.html" %}
 
-<main class="page-wrap">
-  <div class="page-eyebrow">Code Explainer</div>
-  <h1 class="page-title">Understand your code, one line at a time</h1>
-  <p class="page-sub">Paste your code below. Fixify reads it back line by line, in plain 8-word bites, spoken out loud — ask for more detail on any line you don't follow, then press Enter to move on.</p>
-
-  <div class="panel">
-    <div class="panel-head">
-      <div class="panel-head-left">
-        <div class="panel-title">🔍 Your Code</div>
-        <select id="langSelect">
-          <option value="auto">Auto-detect</option>
-          <option value="python">Python</option>
-          <option value="javascript">JavaScript</option>
-          <option value="c">C</option>
-          <option value="cpp">C++</option>
-          <option value="java">Java</option>
-          <option value="go">Go</option>
-          <option value="html">HTML</option>
-          <option value="sql">SQL</option>
-        </select>
+<div class="split" id="splitView">
+  <div class="pane mobile-active" id="leftPane">
+    <div class="pane-head">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <div class="pane-title">Your Code</div>
+      <div class="pane-actions">
+        <button class="mini-btn" id="importBtn">⬆ Import</button>
+        <button class="mini-btn" id="exportBtn">⬇ Export</button>
+        <button class="mini-btn" id="clearBtn">Clear</button>
+        <button class="mini-btn" id="sampleBtn">Sample</button>
+        <button class="mini-btn fs-hide-mobile" id="fsLeftBtn">⛶ Fullscreen</button>
       </div>
-      <button id="voiceToggle" class="active">🔊 Voice</button>
     </div>
-    <textarea id="codeInput" placeholder="Paste your code here…" spellcheck="false"></textarea>
-    <div class="panel-actions">
-      <button class="mini-btn" id="clearBtn">Clear</button>
-      <button class="mini-btn" id="sampleBtn">Sample</button>
-      <button class="primary-btn" id="explainBtn">
-        <span class="spinner"></span><span class="btn-icon">🔍</span><span>Explain this code</span>
+    <div class="editor-wrap"><textarea id="codeInput"></textarea></div>
+    <div class="left-footer">
+      <button class="mode-btn" id="insightBtn">
+        <span class="spinner"></span><span class="btn-icon">🔍</span><span>Explain This Code</span>
       </button>
+      <div class="util-row">
+        <div class="stat-chip">
+          <span>Lines: <b id="lineCount">0</b></span>
+          <span>Chars: <b id="charCount">0</b></span>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div id="outputArea">
-    <div class="placeholder" id="placeholder">
-      <div class="big-icon">🛠️</div>
-      <div>Paste some code above and hit <b>Explain this code</b> to start the walkthrough.</div>
+  <div class="pane" id="rightPane">
+    <div class="pane-head">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <div class="pane-title">Walkthrough</div>
+      <div class="pane-actions">
+        <button class="mini-btn" id="stopVoiceBtn">🔇 Stop</button>
+        <button class="mini-btn fs-hide-mobile" id="fsRightBtn">⛶ Fullscreen</button>
+      </div>
+    </div>
+    <div class="output-area" id="outputArea">
+      <div class="placeholder" id="placeholder">
+        <div class="big-icon">🔍</div>
+        <div>Paste your code on the left and hit <b>Explain This Code</b>.<br>Fixify walks through it one line at a time, out loud, in plain simple words.</div>
+      </div>
     </div>
   </div>
-</main>
+</div>
+
+<div class="mobile-tabbar">
+  <button id="tabCode" class="active">💻<span>Code</span></button>
+  <button id="tabResult">📋<span>Walkthrough</span></button>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="importInput" accept=".py,.js,.java,.c,.cpp,.cc,.h,.go,.html,.htm,.sql,.txt" style="display:none">
 
 <script src="/static/site.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/sql/sql.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/go/go.min.js"></script>
+
 <script>
+const canvas = document.getElementById('bg-canvas');
+const ctx = canvas.getContext('2d');
+function resize(){canvas.width = innerWidth; canvas.height = innerHeight;}
+resize(); addEventListener('resize', resize);
+const particles = Array.from({length: 50}, () => ({
+  x: Math.random()*innerWidth, y: Math.random()*innerHeight,
+  r: Math.random()*1.6+0.4, vx:(Math.random()-.5)*.25, vy:(Math.random()-.5)*.25
+}));
+function loop(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = 'rgba(124,92,255,.5)';
+  particles.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy;
+    if(p.x<0||p.x>innerWidth) p.vx*=-1;
+    if(p.y<0||p.y>innerHeight) p.vy*=-1;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill();
+  });
+  requestAnimationFrame(loop);
+}
+loop();
+
+const modeMap = {auto:'python', python:'python', javascript:'javascript', c:'text/x-csrc', cpp:'text/x-c++src', java:'text/x-java', go:'go', html:'htmlmixed', sql:'sql'};
+const EXT_MAP = {auto:'txt', python:'py', javascript:'js', java:'java', c:'c', cpp:'cpp', go:'go', html:'html', sql:'sql'};
+const EXT_TO_LANG = {py:'python', js:'javascript', java:'java', c:'c', h:'c', cpp:'cpp', cc:'cpp', go:'go', html:'html', htm:'html', sql:'sql', txt:'auto'};
 const SAMPLES = {
   auto: `print("Hello from Fixify!")`,
   python: `print("Hello from Fixify!")`,
@@ -189,67 +250,181 @@ const SAMPLES = {
   sql: `SELECT 'Hello from Fixify!' AS greeting;`
 };
 
-const codeInput = document.getElementById('codeInput');
-const langSelect = document.getElementById('langSelect');
-const explainBtn = document.getElementById('explainBtn');
-const outputArea = document.getElementById('outputArea');
-codeInput.value = SAMPLES.python;
-
-document.getElementById('sampleBtn').addEventListener('click', ()=>{
-  const key = SAMPLES[langSelect.value] ? langSelect.value : 'auto';
-  codeInput.value = SAMPLES[key];
+const editor = CodeMirror.fromTextArea(document.getElementById('codeInput'), {
+  mode:'python', theme:'dracula', lineNumbers:true, tabSize:4, indentUnit:4,
+  autoCloseBrackets:true, matchBrackets:true, lineWrapping:false
 });
-document.getElementById('clearBtn').addEventListener('click', ()=>{ codeInput.value = ''; codeInput.focus(); });
+function currentCMTheme(){ return (document.documentElement.getAttribute('data-theme') === 'light') ? 'eclipse' : 'dracula'; }
+editor.setOption('theme', currentCMTheme());
+document.addEventListener('fixify-theme-changed', ()=>{ editor.setOption('theme', currentCMTheme()); });
+
+function loadSample(lang){
+  const key = SAMPLES[lang] ? lang : 'auto';
+  editor.setValue(SAMPLES[key]);
+  clearInsightHighlight();
+}
+editor.setValue(SAMPLES.python);
+updateStats();
+editor.on('change', updateStats);
+function updateStats(){
+  document.getElementById('lineCount').textContent = editor.lineCount();
+  document.getElementById('charCount').textContent = editor.getValue().length;
+}
+
+document.getElementById('langSelect').addEventListener('change', e=>{
+  editor.setOption('mode', modeMap[e.target.value] || 'python');
+  loadSample(e.target.value);
+  showToast('Sample loaded for ' + e.target.options[e.target.selectedIndex].text);
+});
+document.getElementById('clearBtn').addEventListener('click', ()=>{editor.setValue(''); clearInsightHighlight(); editor.focus();});
+document.getElementById('sampleBtn').addEventListener('click', ()=>{loadSample(document.getElementById('langSelect').value); showToast('Sample loaded');});
+
+document.getElementById('fontMinus').addEventListener('click', ()=>changeFontSize(-1));
+document.getElementById('fontPlus').addEventListener('click', ()=>changeFontSize(1));
+let editorFontSize = 14.5;
+function changeFontSize(delta){
+  editorFontSize = Math.max(11, Math.min(22, editorFontSize + delta));
+  editor.getWrapperElement().style.fontSize = editorFontSize + 'px';
+  editor.refresh();
+}
+const dyslexiaBtn = document.getElementById('dyslexiaToggle');
+dyslexiaBtn.addEventListener('click', ()=>{
+  editor.getWrapperElement().classList.toggle('dyslexia-font');
+  dyslexiaBtn.classList.toggle('active');
+  editor.refresh();
+});
+
+document.getElementById('importBtn').addEventListener('click', ()=>document.getElementById('importInput').click());
+document.getElementById('importInput').addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    editor.setValue(ev.target.result);
+    const ext = file.name.split('.').pop().toLowerCase();
+    const lang = EXT_TO_LANG[ext] || 'auto';
+    document.getElementById('langSelect').value = lang;
+    editor.setOption('mode', modeMap[lang] || 'python');
+    clearInsightHighlight();
+    showToast('Imported ' + file.name);
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  const lang = document.getElementById('langSelect').value;
+  const ext = EXT_MAP[lang] || 'txt';
+  const blob = new Blob([editor.getValue()], {type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'fixify-code.' + ext;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  showToast('Exported as fixify-code.' + ext);
+});
+
+function toggleFullscreenPane(paneEl){
+  if(!document.fullscreenElement){ paneEl.requestFullscreen?.() || paneEl.webkitRequestFullscreen?.(); }
+  else { document.exitFullscreen?.() || document.webkitExitFullscreen?.(); }
+}
+document.getElementById('fsLeftBtn').addEventListener('click', ()=>toggleFullscreenPane(document.getElementById('leftPane')));
+document.getElementById('fsRightBtn').addEventListener('click', ()=>toggleFullscreenPane(document.getElementById('rightPane')));
+document.addEventListener('fullscreenchange', ()=>{ setTimeout(()=>editor.refresh(), 150); });
+
+const tabCode = document.getElementById('tabCode');
+const tabResult = document.getElementById('tabResult');
+const leftPane = document.getElementById('leftPane');
+const rightPane = document.getElementById('rightPane');
+function showMobileTab(tab){
+  if(tab === 'code'){
+    leftPane.classList.add('mobile-active'); rightPane.classList.remove('mobile-active');
+    tabCode.classList.add('active'); tabResult.classList.remove('active');
+  } else {
+    rightPane.classList.add('mobile-active'); leftPane.classList.remove('mobile-active');
+    tabResult.classList.add('active'); tabCode.classList.remove('active');
+  }
+  setTimeout(()=>editor.refresh(), 100);
+}
+tabCode.addEventListener('click', ()=>showMobileTab('code'));
+tabResult.addEventListener('click', ()=>showMobileTab('result'));
+function switchToResultOnMobile(){ if(window.innerWidth <= 820) showMobileTab('result'); }
+
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
 
 let voiceOn = true;
 const voiceToggle = document.getElementById('voiceToggle');
+voiceToggle.classList.add('active');
 voiceToggle.addEventListener('click', ()=>{
   voiceOn = !voiceOn;
   voiceToggle.textContent = voiceOn ? '🔊 Voice' : '🔈 Voice';
   voiceToggle.classList.toggle('active', voiceOn);
   if(!voiceOn) speechSynthesis.cancel();
 });
-
-function speak(text, micEl){
+document.getElementById('stopVoiceBtn').addEventListener('click', ()=>speechSynthesis.cancel());
+function speak(text){
   if(!voiceOn || !('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
   utter.rate = 1; utter.pitch = 1;
-  if(micEl){
-    utter.onstart = ()=>micEl.classList.add('speaking');
-    utter.onend = ()=>micEl.classList.remove('speaking');
-  }
   speechSynthesis.speak(utter);
 }
+
 function escapeHtml(str){
   const div = document.createElement('div');
   div.textContent = str ?? '';
   return div.innerHTML;
 }
+
+let insightLineHandle = null;
+function clearInsightHighlight(){
+  if(insightLineHandle !== null){
+    editor.removeLineClass(insightLineHandle, 'background', 'cm-insight-line');
+    editor.removeLineClass(insightLineHandle, 'gutter', 'cm-insight-gutter');
+    insightLineHandle = null;
+  }
+}
+function highlightInsightLine(lineNumber1Indexed){
+  clearInsightHighlight();
+  if(!lineNumber1Indexed) return;
+  const lineIdx = lineNumber1Indexed - 1;
+  if(lineIdx >= editor.lineCount()) return;
+  insightLineHandle = lineIdx;
+  editor.addLineClass(lineIdx, 'background', 'cm-insight-line');
+  editor.addLineClass(lineIdx, 'gutter', 'cm-insight-gutter');
+  editor.scrollIntoView({line: lineIdx, ch: 0}, 120);
+}
+
 async function postJSON(url, body){
   const res = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
   return res.json();
 }
-function setLoading(btn, loading){ btn.classList.toggle('loading', loading); }
-function clearOutput(){ outputArea.innerHTML = ''; }
 
+const insightBtn = document.getElementById('insightBtn');
+const outputArea = document.getElementById('outputArea');
 let insightLines = [];
 let insightIndex = 0;
 let insightActive = false;
-let currentCode = '';
 
-async function runExplain(){
-  const code = codeInput.value;
-  const language = langSelect.value;
-  if(!code.trim()) return;
-  currentCode = code;
-  setLoading(explainBtn, true);
+insightBtn.addEventListener('click', runInsight);
+
+async function runInsight(){
+  const code = editor.getValue();
+  const language = document.getElementById('langSelect').value;
+  insightBtn.classList.add('loading');
+  switchToResultOnMobile();
   try{
     const data = await postJSON('/insight', {code, language});
     insightLines = data.lines || [];
     insightIndex = 0;
     insightActive = true;
-    clearOutput();
+    document.getElementById('placeholder')?.remove();
+    outputArea.innerHTML = '';
 
     if(!insightLines.length){
       outputArea.innerHTML = `<div class="card"><div class="card-title">🔍 Fixify Code Explainer</div><div class="err-msg">${escapeHtml(data.summary || 'Nothing to explain yet — add some code first.')}</div></div>`;
@@ -258,29 +433,27 @@ async function runExplain(){
     }
 
     const introCard = document.createElement('div');
-    introCard.className = 'card';
+    introCard.className = 'card insight';
     introCard.innerHTML = `<div class="card-title">🔍 Fixify Code Explainer</div><div class="err-msg">${escapeHtml(data.summary || '')}</div>`;
     outputArea.appendChild(introCard);
-
     renderInsightStep();
   }catch(err){
-    clearOutput();
+    document.getElementById('placeholder')?.remove();
     outputArea.innerHTML = `<div class="card error"><div class="card-title">⚠️ Explainer Failed</div><div class="err-msg">Could not reach the Fixify server.</div></div>`;
-    insightActive = false;
   }finally{
-    setLoading(explainBtn, false);
+    insightBtn.classList.remove('loading');
   }
 }
 
 function renderInsightStep(){
   document.getElementById('insightStepCard')?.remove();
   const line = insightLines[insightIndex];
-  const codeLines = currentCode.split('\n');
-  const lineText = codeLines[line.line - 1] || '';
+  highlightInsightLine(line.line);
 
   const card = document.createElement('div');
-  card.className = 'card';
+  card.className = 'card insight';
   card.id = 'insightStepCard';
+  const lineText = editor.getLine(line.line - 1) || '';
   card.innerHTML = `
     <div class="insight-progress"><span>Line ${line.line}</span><span>${insightIndex + 1} of ${insightLines.length}</span></div>
     <div class="insight-bar"><div class="insight-bar-fill" style="width:${((insightIndex+1)/insightLines.length)*100}%"></div></div>
@@ -288,10 +461,9 @@ function renderInsightStep(){
     <div class="insight-explain">${escapeHtml(line.explanation || '')}</div>
     <div class="insight-more" id="insightMoreBox"></div>
     <div class="insight-actions">
-      <button id="insightMoreBtn">❓ I don't understand — explain more</button>
-      <button class="next-btn" id="insightNextBtn">${insightIndex === insightLines.length - 1 ? '✔ Finish' : 'Got it, next line ↵'}</button>
-    </div>
-    <div class="insight-hint">Press Enter ↵ to move to the next line</div>`;
+      <button id="insightMoreBtn">❓ Explain more</button>
+      <button class="next-btn" id="insightNextBtn">${insightIndex === insightLines.length - 1 ? '✔ Finish' : 'Next ↵'}</button>
+    </div>`;
   outputArea.appendChild(card);
 
   speak(line.explanation || '');
@@ -301,7 +473,7 @@ function renderInsightStep(){
     box.classList.add('show');
     box.textContent = 'Thinking…';
     try{
-      const res = await postJSON('/insight/more', {code: currentCode, line: line.line, explanation: line.explanation});
+      const res = await postJSON('/insight/more', {code: editor.getValue(), line: line.line, explanation: line.explanation});
       box.textContent = res.more || 'No extra detail available.';
       speak(res.more || '');
     }catch(e){
@@ -317,16 +489,16 @@ function insightNext(){
     renderInsightStep();
   } else {
     insightActive = false;
+    clearInsightHighlight();
     document.getElementById('insightStepCard')?.remove();
     const doneCard = document.createElement('div');
-    doneCard.className = 'card insight-done';
+    doneCard.className = 'card success insight-done';
     doneCard.innerHTML = `<div class="big-icon">🎉</div><div class="card-title" style="justify-content:center;">All done!</div><div class="err-msg">You've walked through every line of this code.</div>`;
     outputArea.appendChild(doneCard);
     speak('Nice work! You have walked through every line of this code.');
   }
 }
 
-explainBtn.addEventListener('click', runExplain);
 document.addEventListener('keydown', e=>{
   if(!insightActive) return;
   const active = document.activeElement;
