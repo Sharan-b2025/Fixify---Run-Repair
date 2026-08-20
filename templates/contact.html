@@ -4,112 +4,70 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Contact Us — Fixify</title>
-<link rel="icon" type="image/png" sizes="32x32" href="/static/icons/icon-32.png">
-<link rel="icon" type="image/x-icon" href="/static/icons/favicon.ico">
-<link rel="manifest" href="/static/manifest.json">
-<meta name="theme-color" content="#7c5cff">
-<link rel="apple-touch-icon" href="/static/icons/icon-180.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Fixify">
-
-<style>
-.contact-hero{position:relative; text-align:center; padding:60px 20px 10px; overflow:hidden;}
-.contact-hero::before{
-  content:''; position:absolute; inset:0; z-index:-1;
-  background:radial-gradient(circle at 30% 20%, rgba(255,64,160,.16), transparent 55%),
-             radial-gradient(circle at 75% 60%, rgba(124,92,255,.14), transparent 55%);
-}
-.contact-hero h1{
-  font-family:'Space Grotesk',sans-serif; font-size:34px; font-weight:800;
-  background:linear-gradient(120deg,#ff4fa3,#c04fff); -webkit-background-clip:text; background-clip:text; color:transparent;
-  margin-bottom:10px;
-}
-.contact-hero p{color:var(--muted); font-size:15px; max-width:480px; margin:0 auto;}
-
-.contact-cards{
-  display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:20px;
-  max-width:620px; margin:38px auto 60px; padding:0 20px;
-}
-.contact-card{
-  background:linear-gradient(180deg, var(--panel2), var(--panel)); border:1px solid var(--border);
-  border-radius:16px; padding:30px 20px; text-align:center; transition:.2s;
-}
-.contact-card:hover{border-color:rgba(255,79,163,.4); transform:translateY(-3px);}
-.contact-card .icon-circle{
-  width:56px; height:56px; margin:0 auto 16px; border-radius:50%;
-  display:flex; align-items:center; justify-content:center; font-size:24px;
-  background:linear-gradient(135deg, rgba(255,79,163,.18), rgba(192,79,255,.18));
-}
-.contact-card .c-label{
-  font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); margin-bottom:8px; font-weight:700;
-}
-.contact-card .c-value{font-size:16px; font-weight:700; color:var(--text); word-break:break-word;}
-.contact-card a.c-value{text-decoration:none; color:var(--text);}
-.contact-card a.c-value:hover{color:#ff4fa3;}
-</style>
+{% include "_pwa_head.html" %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
 <header class="site-header">
   <button class="hamburger" aria-label="Menu">☰</button>
-  <a href="/" class="brand-mini">
-    <img class="logo" src="/static/icons/icon-192.png" alt="Fixify logo">
-    <strong>Fixify <span>Run &amp; Repair</span></strong>
-  </a>
+  {% include "_brand.html" %}
   <div class="header-spacer"></div>
   <button class="theme-toggle-btn">🌙 Dark</button>
 </header>
 
-<div class="drawer-overlay" id="drawerOverlay"></div>
-<nav class="drawer" id="drawer">
-  <div class="drawer-brand"><img class="logo" src="/static/icons/icon-192.png" alt="Fixify logo">
-  <nav>
-    <a href="/">💻 Code Workspace</a>
-    <a href="/explainer">🔍 Code Explainer</a>
-    <a href="/reviewer">🏆 Code Reviewer</a>
-    <a href="/features">✨ Features</a>
-    <a href="/about">ℹ️ About Us</a>
-    <a href="/contact" class="active">✉️ Contact Us</a>
-  </nav>
-  <div class="drawer-footer">Fixify Run &amp; Repair<br>Built with Gemini · Flask</div>
-</nav>
+{% include "_drawer.html" %}
 
 <main class="page-wrap">
-  <div class="contact-hero">
-    <h1>Contact Us</h1>
-    <p>Questions, feedback, or just want to say hi? Reach out.</p>
+  <div class="page-hero">
+    <h1>Get in <span>Touch</span></h1>
+    <p>Found a bug, have a feature idea, or just want to say hi? Send a message below.</p>
   </div>
 
-  <div class="contact-cards">
-    <div class="contact-card">
-      <div class="icon-circle">📞</div>
-      <div class="c-label">Phone</div>
-      <a class="c-value" href="tel:+919043342412">+91 90433 42412</a>
-    </div>
-    <div class="contact-card">
-      <div class="icon-circle">✉️</div>
-      <div class="c-label">Email</div>
-      <a class="c-value" href="mailto:sharanbalaji2025@gmail.com">sharanbalaji2025@gmail.com</a>
-    </div>
+  <div class="content-card">
+    <form id="contactForm">
+      <div class="form-field">
+        <label for="cName">Name</label>
+        <input type="text" id="cName" required>
+      </div>
+      <div class="form-field">
+        <label for="cEmail">Email</label>
+        <input type="email" id="cEmail" required>
+      </div>
+      <div class="form-field">
+        <label for="cMessage">Message</label>
+        <textarea id="cMessage" rows="5" required></textarea>
+      </div>
+      <button type="submit" class="btn-primary">✉️ Send Message</button>
+      <div class="form-msg" id="formMsg"></div>
+    </form>
   </div>
 </main>
 
-<footer class="site-footer">
-  <div class="footer-inner">
-    <div>
-      <div class="footer-brand"><img class="logo" src="/static/icons/icon-192.png" alt="Fixify logo">
-      <div class="footer-links">
-        <a href="/">Code Workspace</a>
-        <a href="/features">Features</a>
-        <a href="/about">About Us</a>
-        <a href="/contact">Contact Us</a>
-      </div>
-    </div>
-  </div>
-  <div class="footer-bottom">© 2026 Fixify Run &amp; Repair. Built with Gemini.</div>
-</footer>
+{% include "_footer.html" %}
 
 <script src="/static/site.js"></script>
+<script>
+document.getElementById('contactForm').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const msgBox = document.getElementById('formMsg');
+  const payload = {
+    name: document.getElementById('cName').value.trim(),
+    email: document.getElementById('cEmail').value.trim(),
+    message: document.getElementById('cMessage').value.trim()
+  };
+  try{
+    const res = await fetch('/contact', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+    const data = await res.json();
+    msgBox.textContent = data.message || '';
+    msgBox.className = 'form-msg show ' + (data.status === 'ok' ? 'ok' : 'bad');
+    if(data.status === 'ok') document.getElementById('contactForm').reset();
+  }catch(err){
+    msgBox.textContent = 'Could not send your message — please try again.';
+    msgBox.className = 'form-msg show bad';
+  }
+});
+</script>
 </body>
 </html>
