@@ -183,27 +183,37 @@ def analyze_error(title, message, fix_reason, language="auto"):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", active="workspace")
 
 
 @app.route("/explainer")
 def explainer_page():
-    return render_template("explainer.html")
+    return render_template(
+        "explainer.html",
+        active="explainer",
+        brand_suffix="Code Explainer",
+        tagline="Line-by-line walkthroughs, spoken aloud",
+    )
 
 
 @app.route("/reviewer")
 def reviewer_page():
-    return render_template("reviewer.html")
+    return render_template(
+        "reviewer.html",
+        active="reviewer",
+        brand_suffix="Code Reviewer",
+        tagline="Score your code out of 100, instantly",
+    )
 
 
 @app.route("/about")
 def about():
-    return render_template("about.html")
+    return render_template("about.html", active="about")
 
 
 @app.route("/features")
 def features():
-    return render_template("features.html")
+    return render_template("features.html", active="features")
 
 
 @app.route("/contact", methods=["GET", "POST"])
@@ -217,7 +227,7 @@ def contact():
             return jsonify({"status": "error", "message": "Please fill in every field."}), 200
         logger.info("Contact message from %s <%s>: %s", name, email, message[:300])
         return jsonify({"status": "ok", "message": "Thanks — your message has been received."}), 200
-    return render_template("contact.html")
+    return render_template("contact.html", active="contact")
 
 
 @app.route("/sw.js")
